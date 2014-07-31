@@ -3,49 +3,32 @@
     <head>
         <meta charset="utf-8">
         <meta name="description" content="">
-        <meta name="viewport" content="width=960, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Untitled</title>
         <link rel="author" href="humans.txt">
 
         <style>
-            body, html {
-                padding: 0;
-                margin: 0;
-                overflow: hidden;
-            }
-
-			.ad {
-				/*width: 320px;
-				height: 180px;*/
-                /*width: 960px;
-                height: 540px;*/
-				/*background-color: #333;*/
-				background-repeat: no-repeat;
-                background-position: 0 0;
-                position: relative;
+			body {
+				font-family: Helvetica;
+				font-size: 14px;
 			}
 
-            .loading {
-                background: black;
-                display: none;
-                width: 20px;
-                height: 20px;
-                right: 5%;
-                top: 5%;
-                border-radius: 10px;
-                position: absolute;
-                z-index: 10;
-
-
-            }
+			li {
+				margin-bottom: 10px;
+			}
         </style>
     </head>
     <body>
-    	<div class="ad">
-            <span class="loading"></span>   
-        </div>
+        <h2>Video units</h2>
 
+        <ul>
+        	<li><a target="_blank" href="index-320px-8fps.html">320px wide, 8 frames per second, 20% Quality (0.59 MB)</a></li>
+        	<li><a target="_blank" href="index-320px-24fps.html">320px wide, 24 frames per second, 120% Quality (18.1 MB)</a></li>
+        	<li><a target="_blank" href="index-960px-24fps.html">960px wide, 24 frames per second, 120% Quality (93.8 MB)</a></li>
+        	<li><a target="_blank" href="fiesta.gif">960px wide, 24 frames per second, animated GIF (20.6 MB)</a></li>
+        	<li><a target="_blank" href="fiesta.m4v">960px wide, 24 frames per second, Source video (8.3 MB)</a></li>
+        </ul>
 
-        <script src="main.js"></script>
+        <script src="js/main.js"></script>
     </body>
 </html>

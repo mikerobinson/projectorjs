@@ -4,63 +4,7 @@ var index = 0;
 
 
 // Source files
-
-// -- 24 FPS, 100 FRAMES, 120%, 93.8 MB, 60x540 --
-// var frameRate = 24;
-// var framesPerSlide = 100;
-// var totalFrames = 384;
-// var lookAhead = 101;
-// var stageWidth = 960;
-// var stageHeight = 540;
-
-// var images = [];
-// for (var i = 0; i < 4; i++) {
-// 	images.push('original/final' + i + '.jpg');
-// }
-
-
-// // -- 8 FPS, 1 FRAME, 20%, 320x180, 3.3MB --
-// var frameRate = 8;
-// var framesPerSlide = 1;
-// var totalFrames = 128;
-// var lookAhead = 32;
-// var stageWidth = 320;
-// var stageHeight = 180;
-
-// var images = [];
-// for (var i = 0; i < 128; i++) {
-// 	images.push('fps8-20/fiesta' + i + '.jpg');
-// }
-
-// // -- 8 FPS, 32 FRAME, 10%, 320x180, 589K --
-var frameRate = 30;
-var framesPerSlide = 1;
-var totalFrames = 7773;
-var lookAhead = 30;
-var stageWidth = 854;
-var stageHeight = 480;
-
-var images = [];
-for (var i = 0; i < totalFrames; i++) {
-	images.push('are/are' + i + '.jpg');
-}
-
-
-// // -- 24 FPS, 100 FRAMES, 120%, 320x180, 18.1 MB --
-// var frameRate = 24;
-// var framesPerSlide = 100;
-// var totalFrames = 128;
-// var lookAhead = 100;
-// var stageWidth = 320;
-// var stageHeight = 180;
-
-// var images = [];
-// for (var i = 0; i < 4; i++) {
-// 	images.push('fps24-120/final' + i + '.jpg');
-// }
-
 var loop = true;
-
 
 // Map collection
 var collection = [];
@@ -116,6 +60,14 @@ function getImage(index) {
 	return collection[index];
 }
 
+function getImageFrameCount (imageObject) {
+	return Math.ceil(imageObject.height / stageHeight);
+}
+
+function getCompletionPercentage (frame) {
+	return (frame / totalFrames) * 100;
+}
+
 function tick (frame) {
 	// Loop
 	if(loop && frame == totalFrames) {
@@ -130,6 +82,8 @@ function tick (frame) {
 
 		if(image && image.status == 'ready') {
 			loadingElement.style.display = 'none';
+
+			console.log(getCompletionPercentage(frame) + '%');
 
 			drawImage(image.src, frame);
 
