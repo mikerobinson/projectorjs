@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=960, initial-scale=1">
+        <title>Untitled</title>
+        <link rel="author" href="humans.txt">
+
+        <style>
+            body, html {
+                padding: 0;
+                margin: 0;
+                overflow: hidden;
+            }
+
+			.ad {
+				background-repeat: no-repeat;
+                background-position: 0 0;
+                position: relative;
+			}
+
+            .loading {
+                background: black;
+                display: none;
+                width: 20px;
+                height: 20px;
+                right: 5%;
+                top: 5%;
+                border-radius: 10px;
+                position: absolute;
+                z-index: 10;
+
+
+            }
+        </style>
+    </head>
+    <body>
+    	<div class="ad">
+            <span class="loading"></span>   
+        </div>
+
+
+        <script>
+            // -- 24 FPS, 100 FRAMES, 120%, 93.8 MB, 60x540 --
+            var frameRate = 24;
+            var framesPerSlide = 100;
+            var totalFrames = 384;
+            var lookAhead = 101;
+            var stageWidth = 960;
+            var stageHeight = 540;
+
+            var images = [];
+            for (var i = 0; i < 4; i++) {
+             images.push('original/final' + i + '.jpg');
+            }
+        </script>
+
+
+        <script src="main.js"></script>
+    </body>
+</html>

@@ -1,0 +1,65 @@
+.test_server
+node_modules
+
+# Compiled source #
+###################
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Packages #
+############
+# it's better to unpack these files and commit the raw source
+# git has its own built in compression methods
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Logs and databases #
+######################
+*.log
+*.sql
+*.sqlite
+
+# OS generated files #
+######################
+.DS_Store*
+ehthumbs.db
+Icon?
+Thumbs.db
+
+# Generated files #
+######################
+.idea
+.idea_modules/
+atlassian-ide-plugin.xml
+
+# Movie Files #
+######################
+*.m4v
+
+# Vim swp files
+.*.swp
+
+# emacs backup files
+*~
+
+/tags
+css/
+
+*.sublime-workspace
+target/
+translations/
+conf/.ssh
+creative-workflow.properties
+dev.properties
+application.conf
+
