@@ -11,12 +11,12 @@ else
 	mkdir -p $3/{frames,final}
 	
 	echo "Converting movie to images..."
-	ffmpeg -i $1 -r $2 -s $4 -qscale:v 1 -f image2 $3/frames/frame-%4d.jpg -loglevel panic
+	ffmpeg -i $1 -r $2 -s $4 -qscale:v 1 -f image2 $3/frames/frame-%04d.jpg -loglevel panic
 
 	cd $3
 
 	echo "Creating montage..."
-	montage frames/frame-*.jpg -geometry $4+0+0 -tile $5 final/source.jpg
+	montage frames/frame-*.jpg -geometry $4+0+0 -tile $5 final/source-%04d.jpg
 
 	echo "Compressing montages..."
 

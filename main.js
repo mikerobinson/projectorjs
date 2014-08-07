@@ -1,9 +1,15 @@
 var element = document.querySelector('div.ad');
 var image1, image2;
-var activeElementIndex = 0;
 var loadingElement = document.querySelector('div.ad .loading');
-var index = 0;
 
+var pixelSrc = 'http://pixel.tapad.com/tap/pxl.png?ftap=1&ta_pinfo=${TA_PLACEMENT_INFO}&ta_action_id=:mark';
+var pixels = [
+	{ mark: 0, name: 'play' },
+	{ mark: 25, name: 'mark25' },
+	{ mark: 50, name: 'mark50' },
+	{ mark: 75, name: 'mark75' },
+	{ mark: 100, name: 'complete' }
+]
 
 // Source files
 var loop = true;
@@ -30,7 +36,8 @@ function init() {
 	// Inject top and bottom layers
 	var div = document.createElement('div');
 	div.style.backgroundRepeat = 'no-repeat';
-	// div.style.position = 'absolute';
+	div.style.backgroundPosition = '0 0';
+	div.style.position = 'relative';
 	div.style.height = stageHeight + 'px';
 	div.style.width = stageWidth + 'px';
 
@@ -141,7 +148,7 @@ function tick (frame) {
 	if(frame % framesPerSlide == 0) flipActiveImage();
 
 	// Loop
-	if(loop && frame == totalFrames) {
+	if(loop && frame > totalFrames) {
 		resetMovie();
 	} else {
 		setTimeout(function () {
@@ -152,10 +159,11 @@ function tick (frame) {
 			if(image && image.status == 'ready') {
 				loadingElement.style.display = 'none';
 
-			// console.log('Completed', getCompletionPercentage(frame) + '%');
+			
 
 			drawImage(image.src, frame, getImageContainer(true));
 
+			doPixelTracking(frame);
 			doLookAhead(frame);
 
 			tick(++frame);
@@ -164,6 +172,24 @@ function tick (frame) {
 			loadingElement.style.display = 'block';
 		}
 	}, 1000 / frameRate);
+	}
+}
+
+function doPixelTracking (frame) {
+	// console.log('Completed', getCompletionPercentage(frame) + '%');
+
+	var completion = getCompletionPercentage(frame);
+	console.log(completion);
+
+	for(var i = 0; i < pixels.length; i++) {
+		if(completion >= pixels[i].mark && !pixels[i].src) {
+			pixels[i].src = pixelSrc.replace(':mark', pixels[i].name);
+			
+			var pixelImage = new Image();
+			pixelImage.src = pixels[i].src;
+
+			console.log(pixelImage.src);
+		}
 	}
 }
 
