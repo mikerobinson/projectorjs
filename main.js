@@ -1,5 +1,7 @@
 var element = document.querySelector('div.ad');
-var image1, image2;
+var image1, image2, rewindEl, pauseEl, playEl;
+var playing = true; 
+var tickTimeout; 
 var loadingElement = document.querySelector('div.ad .loading');
 
 var pixelSrc = 'http://pixel.tapad.com/tap/pxl.png?ftap=1&ta_pinfo=${TA_PLACEMENT_INFO}&ta_action_id=:mark';
@@ -24,6 +26,7 @@ for(var i = 0; i < images.length; i++) {
 }
 
 init();
+bindEvents();
 resetMovie();
 
 function init() {
@@ -48,7 +51,63 @@ function init() {
 	image1.style.display = 'block';
 	image2.style.display = 'none';
 
+	var a = document.createElement('a');
+	a.href = '#';
+	a.style.position = 'absolute';
+	a.style.bottom = '5px';
+	a.style.background = 'rgba(0,0,0,0.5)';
+	a.style.color = 'white';
+	a.style.width = '20px';
+	a.style.height = '20px';
+	a.style.lineHeight = '20px';
+	a.style.textAlign = 'center';
+	a.style.textDecoration = 'none';
+	a.style.fontSize = '14px';
+	a.style.borderRadius = '4px';
+
+	rewindEl = element.appendChild(a.cloneNode(true));
+	rewindEl.className = 'rewind';
+	rewindEl.style.left = '5px';
+	rewindEl.innerHTML = '&laquo';
+
+	pauseEl = element.appendChild(a.cloneNode(true));
+	pauseEl.className = 'pause';
+	pauseEl.style.left = '30px';
+	pauseEl.innerHTML = '||';
+
+	playEl = element.appendChild(a.cloneNode(true));
+	playEl.className = 'play';
+	playEl.style.left = '55px';
+	playEl.innerHTML = '>';
+
 	image1.active = true;
+}
+
+function bindEvents () {
+	playEl.onclick = function () {
+		playing = true;
+		addClass('playing', element);
+		removeClass('paused', element);
+	};
+
+	pauseEl.onclick = function () {
+		playing = false;
+		addClass('paused', element);
+		removeClass('playing', element);
+	}
+
+	rewindEl.onclick = function () {
+		resetMovie();
+		playing = true;
+	}
+}
+
+function addClass(className, element) {
+	if(element.className.indexOf(className) < 0) element.className = (className + ' ') + element.className;
+}
+
+function removeClass(className, element) {
+	element.className = element.className.replace(className + ' ', '');
 }
 
 function resetMovie() {
@@ -56,6 +115,8 @@ function resetMovie() {
 	// element.innerHTML = '';
 	
 	// init();
+
+	if(tickTimeout) clearTimeout(tickTimeout);
 	
 	for(var i = 0; i < collection.length; i++) {
 		collection[i].status = 'pristine';
@@ -145,28 +206,32 @@ function getCompletionPercentage (frame) {
 
 function tick (frame) {
 	// Check for image flip
-	if(frame % framesPerSlide == 0) flipActiveImage();
+	if(frame % framesPerSlide == 0 && playing) flipActiveImage();
 
 	// Loop
 	if(loop && frame > totalFrames) {
 		resetMovie();
 	} else {
-		setTimeout(function () {
-			frame = frame || 0;
+		tickTimeout = setTimeout(function () {
+			if(playing) {
+				frame = frame || 0;
 
-			var image = getImage(getIndex(frame));
+				var image = getImage(getIndex(frame));
 
-			if(image && image.status == 'ready') {
-				loadingElement.style.display = 'none';
+				if(image && image.status == 'ready') {
+					loadingElement.style.display = 'none';
 
-			
+				
 
-			drawImage(image.src, frame, getImageContainer(true));
+				drawImage(image.src, frame, getImageContainer(true));
 
-			doPixelTracking(frame);
-			doLookAhead(frame);
+				doPixelTracking(frame);
+				doLookAhead(frame);
 
-			tick(++frame);
+				frame++;
+			}
+
+			tick(frame);
 		} else {
 			tick(frame);
 			loadingElement.style.display = 'block';
@@ -179,7 +244,8 @@ function doPixelTracking (frame) {
 	// console.log('Completed', getCompletionPercentage(frame) + '%');
 
 	var completion = getCompletionPercentage(frame);
-	console.log(completion);
+	// console.log(completion);
+
 
 	for(var i = 0; i < pixels.length; i++) {
 		if(completion >= pixels[i].mark && !pixels[i].src) {
