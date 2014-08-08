@@ -83,30 +83,40 @@ Projector.prototype.make = function () {
  */
 Projector.prototype.bindEvents = function () {
 	// Play
-	if (this.elements.play) {
-		this.elements.play.onclick = function () {
-			this.state.playing = true;
-			Projector.addClass(this.elements.container, 'playing');
-			Projector.removeClass(this.elements.container, 'paused');
-		}
-	}
+	if (this.elements.play) this.elements.play.onclick = this.play;
 
 	// Pause
-	if (this.elements.pause) {
-		this.elements.pause.onclick = function () {
-			this.state.playing = false;
-			Projector.addClass(this.elements.container, 'paused');
-			Projector.removeClass(this.elements.container, 'playing');
-		}
-	}
+	if (this.elements.pause) this.elements.pause.onclick = this.pause;
 
 	// Rewind
-	if (this.elements.rewind) {
-		this.elements.rewind.onclick = function () {
-			this.restartMovie();
-			this.state.playing = true;
-		}
-	}
+	if (this.elements.rewind) this.elements.rewind.onclick = this.rewind;
+};
+
+/**
+ * Play the movie
+ */
+Projector.prototype.play = function() {
+	this.state.playing = true;
+	Projector.addClass(this.elements.container, 'playing');
+	Projector.removeClass(this.elements.container, 'paused');
+};
+
+/**
+ * Pause the movie
+ */
+Projector.prototype.pause = function() {
+	this.state.playing = false;
+	Projector.addClass(this.elements.container, 'paused');
+	Projector.removeClass(this.elements.container, 'playing');
+};
+
+/**
+ * Rewind the movie
+ * @param  {boolean} play Start the movie
+ */
+Projector.prototype.rewind = function(play) {
+	this.restartMovie();
+	if(play) this.play();
 };
 
 /**
@@ -249,7 +259,7 @@ Projector.prototype.tick = function (frame) {
 				that.tick(frame);
 			} else {
 				that.tick(frame);
-				that.elements.loading.style.display = 'block';
+				if(that.elements.loading) that.elements.loading.style.display = 'block';
 			}
 		}, 1000 / this.settings.frameRate);
 	}
