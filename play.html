@@ -40,24 +40,33 @@
             <span class="loading"></span>   
         </div>
 
-
+        <script src="projector.js"></script>
         <script>
-            var frameRate = 24;
-            var framesPerSlide = 100;
-            var totalFrames = 736;
-            var lookAhead = 101;
-            var stageWidth = 300;
-            var stageHeight = 154;
+            // var frameRate = 24;
+            // var framesPerSlide = 100;
+            // var totalFrames = 736;
+            // var lookAhead = 101;
+            // var stageWidth = 300;
+            // var stageHeight = 154;
 
             var images = [];
             for (var i = 0; i <= 7; i++) {
              images.push('frames/mustang24/final/100-' + i + '.jpg');
             }
 
-            
+            var el = document.querySelector('div.ad');
+
+            var projector = new Projector(el, {
+                totalFrames: 736,
+                stageWidth: 300,
+                stageHeight: 154,
+                images: images
+            });
+
+            projector.init();
         </script>
 
 
-        <script src="main.js"></script>
+        
     </body>
 </html>

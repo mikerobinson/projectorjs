@@ -3,32 +3,83 @@
     <head>
         <meta charset="utf-8">
         <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=960, initial-scale=1">
         <title>Untitled</title>
         <link rel="author" href="humans.txt">
 
         <style>
-			body {
-				font-family: Helvetica;
-				font-size: 14px;
-			}
+            body, html {
+                padding: 0;
+                margin: 0;
+                overflow: hidden;
+            }
 
-			li {
-				margin-bottom: 10px;
-			}
+            .ad {
+                background-repeat: no-repeat;
+                background-position: 0 0;
+                position: relative;
+            }
+
+            .ad:hover {
+                cursor: pointer;
+            }
+
+            .video-container { 
+                display: none;
+            }
+
+            .loading {
+                background: black;
+                display: none;
+                width: 20px;
+                height: 20px;
+                right: 5%;
+                top: 5%;
+                border-radius: 10px;
+                position: absolute;
+                z-index: 10;
+
+
+            }
         </style>
     </head>
     <body>
-        <h2>Video units</h2>
+        <div class="ad" id="ad">
+            <span class="loading"></span>   
+        </div>
 
-        <ul>
-        	<li><a target="_blank" href="index-320px-8fps.html">320px wide, 8 frames per second, 20% Quality (0.59 MB)</a></li>
-        	<li><a target="_blank" href="index-320px-24fps.html">320px wide, 24 frames per second, 120% Quality (18.1 MB)</a></li>
-        	<li><a target="_blank" href="index-960px-24fps.html">960px wide, 24 frames per second, 120% Quality (93.8 MB)</a></li>
-        	<li><a target="_blank" href="fiesta.gif">960px wide, 24 frames per second, animated GIF (20.6 MB)</a></li>
-        	<li><a target="_blank" href="fiesta.m4v">960px wide, 24 frames per second, Source video (8.3 MB)</a></li>
-        </ul>
+        <a href="http://www.ford.com/cars/mustang/" class="video-container" target="blank" id="video-container">
+            <video class="video" width="854" height="438" src="clip.mp4" id="video">
+                <source="clip.mp4" type="video/mp4"></source>
+                <source="clip.avi" type="video/avi"></source>
+            </video>
+        </a>
 
-        <script src="js/main.js"></script>
+        <script>
+            var frameRate = 24;
+            var framesPerSlide = 100;
+            var totalFrames = 736;
+            var lookAhead = 100;
+            var stageWidth = 854;
+            var stageHeight = 438;
+
+            var images = [];
+            for (var i = 0; i <= 7; i++) {
+             images.push('frames/24-100-full/final/source-' + i + '.jpg');
+            }
+        </script>
+
+        <script src="main.js"></script>
+
+        <script type="text/javascript">
+            var ad = document.getElementById('ad');
+            var video = document.getElementById('video');
+            var videoContainer = document.getElementById('video-container');
+            ad.onclick = function () {
+                ad.style.display = 'none';
+                videoContainer.style.display = 'block';
+                video.play();
+            };
+        </script>
     </body>
 </html>
