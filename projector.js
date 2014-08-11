@@ -12,11 +12,13 @@ function Projector(el, options) {
 	}
 
 	this.state = {
+		started: false,
 		playing: true,
 		tickTimeout: null
 	}
 
 	this.settings = {
+		autoplay: true,
 		frameRate: 24,
 		framesPerSlide: 100,
 		framesPerRow: 10,
@@ -42,7 +44,7 @@ function Projector(el, options) {
 Projector.prototype.init = function () {
 	this.make();
 	this.bindEvents();
-	this.restartMovie();
+	if(this.settings.autoplay) this.startMovie();
 };
 
 /**
@@ -160,11 +162,15 @@ Projector.prototype.bindEvents = function () {
  * Play the movie
  */
 Projector.prototype.play = function() {
-	this.state.playing = true;
-	Projector.addClass(this.elements.container, 'playing');
-	Projector.removeClass(this.elements.container, 'paused');
+	if(!this.state.started) {
+		this.startMovie();
+	} else {
+		this.state.playing = true;
+		Projector.addClass(this.elements.container, 'playing');
+		Projector.removeClass(this.elements.container, 'paused');
 
-	if(this.state.realMovieActive) this.elements.movie.play();
+		if(this.state.realMovieActive) this.elements.movie.play();
+	}
 };
 
 /**
@@ -194,7 +200,7 @@ Projector.prototype.rewind = function(play) {
 	if(this.state.realMovieActive) {
 		this.elements.movie.currentTime = 0; 
 	} else {
-		this.restartMovie();
+		this.startMovie();
 	}
 
 	if(play) this.play();
@@ -215,17 +221,17 @@ Projector.prototype.mute = function() {
 /**
  * Reset the movie and clean up any timeouts
  */
-Projector.prototype.restartMovie = function () {
+Projector.prototype.startMovie = function () {
 	var that = this;
+
+	this.state.started = true;
+
 	if (this.state.tickTimeout) clearTimeout(this.state.tickTimeout);
 
 	for (var i = 0; i < this.collection.length; i++) {
 		this.collection[i].status = 'pristine';
 	}
 
-	// this.loadImage(0, function () {
-	// 	that.tick.prototype.apply()
-	// });
 	this.loadImage(0, function () {
 		that.tick.apply(that)
 	});
@@ -367,7 +373,7 @@ Projector.prototype.tick = function (frame) {
 
 	// Loop
 	if (this.settings.loop && frame > this.settings.totalFrames) {
-		this.restartMovie();
+		this.startMovie();
 	} else {
 		var that = this;
 		this.state.tickTimeout = setTimeout(function () {
