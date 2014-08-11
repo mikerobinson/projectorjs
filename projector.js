@@ -4,6 +4,7 @@ function Projector(el, options) {
 		image1: null,
 		image2: null,
 		loading: null,
+		link: null,
 		rewind: null,
 		pause: null,
 		play: null
@@ -19,12 +20,15 @@ function Projector(el, options) {
 		framesPerSlide: 100,
 		framesPerRow: 10,
 		loop: true,
-		showControls: true,
+		controls: true,
 		width: 100,
 		height: 100,
 		eventPixel: '',
 		events: [],
-		images: []
+		images: [],
+		movieUrl: '',
+		clickUrl: '',
+		clickToMovie: true
 	}
 	this.settings = Projector.extend(options, this.settings);
 
@@ -52,15 +56,13 @@ Projector.prototype.make = function () {
 		});
 	}
 
-	this.elements.container.style.background = 'red';
-
 	// Init stage styles
 	this.elements.container.style.height = this.settings.height + 'px';
 	this.elements.container.style.width = this.settings.width + 'px';
 	this.elements.container.style.overflow = 'hidden';
 	this.elements.container.style.backgroundRepeat = 'no-repeat';
 
-	// Inject top and bottom layer elements
+	// Init top and bottom layer elements
 	var div = document.createElement('div');
 	div.style.backgroundRepeat = 'no-repeat';
 	div.style.backgroundPosition = '0 0';
@@ -76,20 +78,70 @@ Projector.prototype.make = function () {
 	this.elements.image2.style.display = 'none';
 
 	this.elements.image1.active = true;
+	
+	// Init controls
+	if(this.settings.controls) {
+		var control = document.createElement('a');
+		control.style.cssText = 'background: rgba(0,0,0,0.5); color: white; width: 40px; height: 40px; line-height: 40px; text-align: center; position: absolute; bottom: 0; z-index: 10;';
+
+		this.elements.rewind = this.elements.container.appendChild(control.cloneNode(true))
+		this.elements.rewind.innerHTML = '<<';
+		this.elements.rewind.style.left = '0';
+
+		this.elements.pause = this.elements.container.appendChild(control.cloneNode(true))
+		this.elements.pause.innerHTML = '||';
+		this.elements.pause.style.left = '40px';
+	}
+
+
+	// Init click through link
+	// Rendered on top of everything except video controls
+	var link = document.createElement('link');
+	link.href = (this.settings.clickUrl) ? this.settings.clickUrl : '#';
+	link.target = '_blank';
+	link.className = 'link';
+	link.style.cssText = 'position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 9';
+	this.elements.link = this.elements.container.appendChild(link);
+
+	// Render the real video element
+	if(this.settings.movieUrl) {
+		var video = document.createElement('video');
+		video.autoplay = false;
+		video.src = this.settings.movieUrl;
+		video.style.width = this.settings.width + 'px';
+		video.style.height = this.settings.height + 'px';
+		video.style.zIndex = -1;
+		video.controls = this.settings.controls;
+
+		this.elements.movie = this.elements.container.appendChild(video);
+	}
 };
 
 /**
  * Bind all events
  */
 Projector.prototype.bindEvents = function () {
+	var that = this;
+
 	// Play
-	if (this.elements.play) this.elements.play.onclick = this.play;
+	if (this.elements.play) this.elements.play.onclick = function () {
+		that.play.call(that);
+	}
 
 	// Pause
-	if (this.elements.pause) this.elements.pause.onclick = this.pause;
+	if (this.elements.pause) this.elements.pause.onclick = function () {
+		that.pause.call(that);
+	}
 
 	// Rewind
-	if (this.elements.rewind) this.elements.rewind.onclick = this.rewind;
+	if (this.elements.rewind) this.elements.rewind.onclick = function () {
+		that.rewind.call(that, true);
+	}
+
+	// Click
+	if(this.elements.link) this.elements.link.onclick = function (e) {
+		that.handleClick.call(that, e);
+	}
 };
 
 /**
@@ -136,6 +188,42 @@ Projector.prototype.restartMovie = function () {
 	this.loadImage(0, function () {
 		that.tick.apply(that)
 	});
+};
+
+/**
+ * Handle user interaction with base container, typically for the clickthrough
+ * Currently handles playing the real movie on click instead of clicking through
+ */
+Projector.prototype.handleClick = function (e) {	
+	// Handle swapping to real movie 
+	if(this.settings.movieUrl && this.settings.clickToMovie && !this.state.realMovieActive) {
+		this.playRealMovie();
+		e.preventDefault();
+
+	} else if (this.state.realMovieActive) {
+		// Since the ad spawns a new tab, pause the playing movie
+		this.elements.movie.pause(); 
+	}
+
+	// Any click should stop the image loop to preserve CPU & battery
+	if(this.state.tickTimeout) clearTimeout(this.state.tickTimeout);
+};
+
+/**
+ * Swaps out the looping images for a traditional movie element
+ */
+Projector.prototype.playRealMovie = function () {
+	clearTimeout(this.state.tickTimeout); // Stop looping image
+	
+	// Hide looping images
+	this.elements.image1.style.display = 'none';
+	this.elements.image2.style.display = 'none';
+
+	// Play real movie
+	this.elements.movie.style.zIndex = 1;
+	this.elements.movie.play();
+
+	this.state.realMovieActive = true;
 };
 
 /**
@@ -223,7 +311,6 @@ Projector.prototype.flipActiveImage = function () {
 
 	this.elements.image2.active = oneActive;
 	this.elements.image2.style.display = oneActive ? 'block' : 'none';
-	
 };
 
 /**
