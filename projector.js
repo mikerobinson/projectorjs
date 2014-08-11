@@ -171,11 +171,19 @@ Projector.prototype.play = function() {
  * Pause the movie
  */
 Projector.prototype.pause = function() {
-	this.state.playing = false;
-	Projector.addClass(this.elements.container, 'paused');
-	Projector.removeClass(this.elements.container, 'playing');
+	this.state.playing = !this.state.playing;
 
-	if(this.state.realMovieActive) this.elements.movie.pause();
+	if(this.state.playing) {
+		Projector.addClass(this.elements.container, 'playing');
+		Projector.removeClass(this.elements.container, 'paused');
+	} else {
+		Projector.addClass(this.elements.container, 'paused');
+		Projector.removeClass(this.elements.container, 'playing');
+	}
+
+	if(this.state.realMovieActive) {
+		(this.state.playing) ? this.elements.movie.play() : this.elements.movie.pause();
+	}
 };
 
 /**
