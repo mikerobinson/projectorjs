@@ -42,13 +42,6 @@
 
         <script src="projector.js"></script>
         <script>
-            // var frameRate = 24;
-            // var framesPerSlide = 100;
-            // var totalFrames = 736;
-            // var lookAhead = 101;
-            // var stageWidth = 300;
-            // var stageHeight = 154;
-
             var images = [];
             for (var i = 0; i <= 7; i++) {
              images.push('frames/mustang24/final/100-' + i + '.jpg');
@@ -58,9 +51,12 @@
 
             var projector = new Projector(el, {
                 totalFrames: 736,
-                stageWidth: 300,
-                stageHeight: 154,
-                images: images
+                width: 300,
+                height: 154,
+                images: images,
+                clickToMovie: true,
+                clickUrl: 'http://www.ford.com/cars/mustang',
+                movieUrl: 'mustang.mp4'
             });
 
             projector.init();

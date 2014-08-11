@@ -5,6 +5,7 @@ function Projector(el, options) {
 		image2: null,
 		loading: null,
 		link: null,
+		movie: null,
 		rewind: null,
 		pause: null,
 		play: null
@@ -85,18 +86,24 @@ Projector.prototype.make = function () {
 		control.style.cssText = 'background: rgba(0,0,0,0.5); color: white; width: 40px; height: 40px; line-height: 40px; text-align: center; position: absolute; bottom: 0; z-index: 10;';
 
 		this.elements.rewind = this.elements.container.appendChild(control.cloneNode(true))
-		this.elements.rewind.innerHTML = '<<';
+		this.elements.rewind.innerHTML = '&laquo;';
+		this.elements.rewind.style.fontSize = '20px';
 		this.elements.rewind.style.left = '0';
 
 		this.elements.pause = this.elements.container.appendChild(control.cloneNode(true))
 		this.elements.pause.innerHTML = '||';
 		this.elements.pause.style.left = '40px';
+
+		this.elements.mute = this.elements.container.appendChild(control.cloneNode(true));
+		this.elements.mute.style.background = 'rgba(0,0,0,0.5) url(mute-off.png) 0 0 no-repeat';
+		this.elements.mute.style.left = '80px';
+		this.elements.mute.style.display = 'none';
 	}
 
 
 	// Init click through link
 	// Rendered on top of everything except video controls
-	var link = document.createElement('link');
+	var link = document.createElement('a');
 	link.href = (this.settings.clickUrl) ? this.settings.clickUrl : '#';
 	link.target = '_blank';
 	link.className = 'link';
@@ -111,7 +118,7 @@ Projector.prototype.make = function () {
 		video.style.width = this.settings.width + 'px';
 		video.style.height = this.settings.height + 'px';
 		video.style.zIndex = -1;
-		video.controls = this.settings.controls;
+		video.controls = false; // override video controls with javascript ones
 
 		this.elements.movie = this.elements.container.appendChild(video);
 	}
@@ -138,6 +145,11 @@ Projector.prototype.bindEvents = function () {
 		that.rewind.call(that, true);
 	}
 
+	// Mute
+	if (this.elements.mute) this.elements.mute.onclick = function () {
+		that.mute.call(that);
+	}
+
 	// Click
 	if(this.elements.link) this.elements.link.onclick = function (e) {
 		that.handleClick.call(that, e);
@@ -151,6 +163,8 @@ Projector.prototype.play = function() {
 	this.state.playing = true;
 	Projector.addClass(this.elements.container, 'playing');
 	Projector.removeClass(this.elements.container, 'paused');
+
+	if(this.state.realMovieActive) this.elements.movie.play();
 };
 
 /**
@@ -160,6 +174,8 @@ Projector.prototype.pause = function() {
 	this.state.playing = false;
 	Projector.addClass(this.elements.container, 'paused');
 	Projector.removeClass(this.elements.container, 'playing');
+
+	if(this.state.realMovieActive) this.elements.movie.pause();
 };
 
 /**
@@ -167,8 +183,25 @@ Projector.prototype.pause = function() {
  * @param  {boolean} play Start the movie
  */
 Projector.prototype.rewind = function(play) {
-	this.restartMovie();
+	if(this.state.realMovieActive) {
+		this.elements.movie.currentTime = 0; 
+	} else {
+		this.restartMovie();
+	}
+
 	if(play) this.play();
+};
+
+/**
+ * Toggle mute on the real movie
+ */
+Projector.prototype.mute = function() {
+	this.state.muted = !this.state.muted;
+
+	if(this.state.realMovieActive) {
+		this.elements.movie.muted = this.state.muted;
+		this.elements.mute.style.backgroundImage = (this.state.muted) ? 'url(mute-on.png)' : 'url(mute-off.png)';
+	}	
 };
 
 /**
@@ -218,6 +251,9 @@ Projector.prototype.playRealMovie = function () {
 	// Hide looping images
 	this.elements.image1.style.display = 'none';
 	this.elements.image2.style.display = 'none';
+
+	// Enable mute button
+	this.elements.mute.style.display = 'block';
 
 	// Play real movie
 	this.elements.movie.style.zIndex = 1;
