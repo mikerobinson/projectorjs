@@ -12,26 +12,32 @@ function Projector(el, options) {
 	}
 
 	this.state = {
+		quality: 0,
 		started: false,
 		playing: true,
-		tickTimeout: null
+		tickTimeout: null,
+		loadTimes: []
 	}
 
 	this.settings = {
 		autoplay: true,
 		frameRate: 24,
-		framesPerSlide: 100,
-		framesPerRow: 10,
+		columns: 10,
+		rows: 10,
 		loop: true,
 		controls: true,
 		width: 100,
 		height: 100,
 		eventPixel: '',
 		events: [],
-		images: [],
+		lookAhead: 3,
 		movieUrl: '',
 		clickUrl: '',
-		clickToMovie: true
+		clickToMovie: true,
+		quality: 0,
+		qualities: [10,25,50,100],
+		dynamicQuality: true
+
 	}
 	this.settings = Projector.extend(options, this.settings);
 
@@ -51,10 +57,19 @@ Projector.prototype.init = function () {
  * Prepare the DOM elements
  */
 Projector.prototype.make = function () {
+	// Calculate durations
+	this.state.framesPerSlide = this.settings.columns * this.settings.rows;
+	this.state.timePerSlide = ((this.settings.columns * this.settings.rows) / this.settings.frameRate) * 1000; // milliseconds
+	this.state.totalImages = Math.ceil(this.settings.totalFrames / this.state.framesPerSlide);
+
+	console.table({ state: this.state });
+
+	// Transfer quality settings to state because it may be variable instead of fixed
+	this.state.quality = this.settings.quality;
+
 	// Map image collection
-	for (var i = 0; i < this.settings.images.length; i++) {
+	for (var i = 0; i < this.state.totalImages; i++) {
 		this.collection.push({
-			src: this.settings.images[i],
 			status: 'pristine'
 		});
 	}
@@ -117,6 +132,7 @@ Projector.prototype.make = function () {
 		var video = document.createElement('video');
 		video.autoplay = false;
 		video.src = this.settings.movieUrl;
+		video.preload = false;
 		video.style.width = this.settings.width + 'px';
 		video.style.height = this.settings.height + 'px';
 		video.style.zIndex = -1;
@@ -225,6 +241,7 @@ Projector.prototype.startMovie = function () {
 	var that = this;
 
 	this.state.started = true;
+	this.state.loadTimes = [];
 
 	if (this.state.tickTimeout) clearTimeout(this.state.tickTimeout);
 
@@ -282,15 +299,36 @@ Projector.prototype.playRealMovie = function () {
  * @param  {Function} callback Callback when the image has loaded
  */
 Projector.prototype.loadImage = function (index, callback) {
+	var that = this;
 	var item = this.collection[index];
 
 	if (item && item.status == 'pristine') {
 		item.status = 'loading';
 
+		// Upgrade / Downgrade image quality based on bandwidth
+		if(this.settings.dynamicQuality) this.doQualityCheck();
+		
+		// Generate image source from index and current quality		
+		var src = this.settings.imageFiles
+		src = src.replace('%q', this.settings.qualities[this.state.quality]);
+		src = src.replace('%i', index);
+
+		src = src + '?ord=' + Math.random().toString().substr(2); // Cachebuster, for debugging
+
+		item.src = src;
+
+		// Start measuring image load time
+		var loadTime = new Date().valueOf(); 
+
+		// Request image
 		var image = new Image();
-		image.src = item.src;
+		image.src = src;
 
 		image.onload = function () {
+			// Perform load time calculations
+			that.state.loadTimes.push(new Date().valueOf() - loadTime); // Finish measuring image load time
+			
+			// Move on
 			item.status = 'ready';
 			if (callback) callback();
 		}
@@ -306,9 +344,9 @@ Projector.prototype.loadImage = function (index, callback) {
 Projector.prototype.drawImage = function (image, frame, targetElement) {
 	targetElement.style.backgroundImage = 'url(' + image + ')';
 
-	var localFrame = frame % this.settings.framesPerSlide; // frame on current image
-	var row = Math.floor(localFrame / this.settings.framesPerRow);
-	var column = localFrame % this.settings.framesPerRow;
+	var localFrame = frame % this.state.framesPerSlide; // frame on current image
+	var row = Math.floor(localFrame / this.settings.columns);
+	var column = localFrame % this.settings.columns;
 
 	targetElement.style.backgroundPosition = '-' + (column * this.settings.width) + 'px -' + (row * this.settings.height) + 'px';
 };
@@ -327,7 +365,7 @@ Projector.prototype.getScreen = function (isActive) {
  * @param  {integer} frame The frame to calculate index from
  */
 Projector.prototype.getIndex = function (frame) {
-	return Math.floor(frame / this.settings.framesPerSlide)
+	return Math.floor(frame / this.state.framesPerSlide)
 }
 
 /**
@@ -350,6 +388,28 @@ Projector.prototype.getCompletionPercentage = function (frame) {
 };
 
 /**
+ * Calculate average load time percentage based on last three images
+ * @return {number} Average load time
+ */
+Projector.prototype.getLoadTimePercentage = function() {
+	if(!this.state.loadTimes.length) return NaN;
+
+	// var times = this.state.loadTimes.slice(-3); // Get last 3 or less times
+	// var totalTime = 0;
+
+	// for(var i = 0; i < times.length; i++) {
+	// 	totalTime += times[i];
+	// }
+
+
+	var totalTime = this.state.loadTimes.slice(-1)[0]; // Simplify, just grab the last load time;
+	var percent = (totalTime / this.state.timePerSlide) * 100;
+
+	return percent;
+};
+
+
+/**
  * Hide the current image and render the backup.
  * I use two images because hiding and showing an element is more performant than swapping out images on the same element
  */
@@ -368,9 +428,6 @@ Projector.prototype.flipActiveImage = function () {
  * @param  {integer} frame The frame to move to
  */
 Projector.prototype.tick = function (frame) {
-	// Check for image flip
-	if (frame % this.settings.framesPerSlide == 0 && this.state.playing) this.flipActiveImage();
-
 	// Loop
 	if (this.settings.loop && frame > this.settings.totalFrames) {
 		this.startMovie();
@@ -383,6 +440,9 @@ Projector.prototype.tick = function (frame) {
 				var image = that.getImage(that.getIndex(frame));
 
 				if (image && image.status == 'ready') {
+					// Check for image flip
+					if (frame % that.state.framesPerSlide == 0 && that.state.playing) that.flipActiveImage();
+
 					if(that.elements.loading) that.elements.loading.style.display = 'none';
 
 					that.drawImage(image.src, frame, that.getScreen(true));
@@ -395,8 +455,8 @@ Projector.prototype.tick = function (frame) {
 
 				that.tick(frame);
 			} else {
-				that.tick(frame);
 				if(that.elements.loading) that.elements.loading.style.display = 'block';
+				that.tick(frame);
 			}
 		}, 1000 / this.settings.frameRate);
 	}
@@ -434,6 +494,23 @@ Projector.prototype.doLookAhead = function (frame) {
 			that.drawImage(image.src, 0, that.getScreen(false));
 		});
 	}
+};
+
+/**
+ * Raise or lower the quality based on bandwidth availability
+ */
+Projector.prototype.doQualityCheck = function() {
+	var loadPercentage = this.getLoadTimePercentage();
+
+	// console.log('Load time percent', loadPercentage);
+
+	// Increase quality
+	if(loadPercentage <= 50 && this.state.quality < this.settings.qualities.length - 1) this.state.quality++;
+
+	// Decrease quality
+	if(loadPercentage > 100 && this.state.quality > 0) this.state.quality--; // Bad
+	if(loadPercentage > 150 && this.state.quality > 0) this.state.quality--; // Really bad
+	if(loadPercentage > 200 && this.state.quality > 0) this.state.quality--; // Atrocious
 };
 
 
