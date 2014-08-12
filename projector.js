@@ -97,6 +97,13 @@ Projector.prototype.make = function () {
 
 	this.elements.image1.active = true;
 	
+	// Loading spinner
+	var loading = document.createElement('div');
+	loading.style.cssText = 'position: absolute; top: 5px; right: 5px; z-index: 5; display: none; width: 38px; height: 38px; background: url(spinner.png) left top no-repeat';
+	this.elements.loading = this.elements.container.appendChild(loading);
+
+
+
 	// Init controls
 	if(this.settings.controls) {
 		var control = document.createElement('a');
@@ -443,7 +450,7 @@ Projector.prototype.tick = function (frame) {
 					// Check for image flip
 					if (frame % that.state.framesPerSlide == 0 && that.state.playing) that.flipActiveImage();
 
-					if(that.elements.loading) that.elements.loading.style.display = 'none';
+					that.hideLoading.call(that);
 
 					that.drawImage(image.src, frame, that.getScreen(true));
 
@@ -451,11 +458,13 @@ Projector.prototype.tick = function (frame) {
 					that.doLookAhead(frame);
 
 					frame++;
+				} else {
+					that.showLoading.call(that);
 				}
 
 				that.tick(frame);
 			} else {
-				if(that.elements.loading) that.elements.loading.style.display = 'block';
+
 				that.tick(frame);
 			}
 		}, 1000 / this.settings.frameRate);
@@ -511,6 +520,31 @@ Projector.prototype.doQualityCheck = function() {
 	if(loadPercentage > 100 && this.state.quality > 0) this.state.quality--; // Bad
 	if(loadPercentage > 150 && this.state.quality > 0) this.state.quality--; // Really bad
 	if(loadPercentage > 200 && this.state.quality > 0) this.state.quality--; // Atrocious
+};
+
+Projector.prototype.showLoading = function() {
+	if(this.state.loadingInterval) return; // Don't allow more than one
+
+	var that = this;
+	var counter = 0;
+
+    this.state.loadingInterval = setInterval(function() {
+        var frames = 19; 
+        var frameWidth = 38;
+        var offset = counter * -frameWidth;
+        that.elements.loading.style.backgroundPosition = '0px ' + offset + 'px';
+        counter++; 
+        if (counter >= frames) counter = 0;
+    }, 50);
+	
+	this.elements.loading.style.display = 'block';
+};
+
+Projector.prototype.hideLoading = function() {
+	if(!this.state.loadingInterval) return;
+
+	clearInterval(this.state.loadingInterval);
+	this.elements.loading.style.display = 'none';
 };
 
 
