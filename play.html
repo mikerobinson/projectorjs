@@ -14,12 +14,44 @@
                 overflow: hidden;
             }
 
-			.ad {
-				background-repeat: no-repeat;
-                background-position: 0 0;
-                position: relative;
-			}
+            .rewind,
+            .pause,
+            .mute {
+                position: absolute;
+                left: 0;
+                bottom: 0;
+                width: 40px;
+                height: 40px;
+                background-color: rgba(0,0,0,0.5);
+                z-index: 10;
+            }
 
+            .rewind:hover,
+            .pause:hover,
+            .mute:hover {
+                cursor: pointer;
+            }
+        
+            .rewind {
+                background: url(rewind.png) left top no-repeat;
+            }
+
+            .pause {
+                background: url(pause.png) left top no-repeat;
+                left: 40px;
+            }
+
+            .mute {
+                left: 80px;
+            }
+
+            .mute.mute-off {
+                background: url(mute-off.png) left top no-repeat;
+            }
+
+            .mute.mute-on {
+                background: url(mute-on.png) left top no-repeat;
+            }
         </style>
     </head>
     <body>
@@ -29,22 +61,9 @@
         <script>
             var el = document.querySelector('div.ad');
 
-            // var projector = new Projector(el, {
-            //     columns: 5,
-            //     rows: 6,
-            //     frameRate: 8,
-            //     totalFrames: 247,
-            //     width: 300,
-            //     height: 154,
-            //     imageFiles: 'frames/mustang8/final/%q-%i.jpg',
-            //     clickToMovie: true,
-            //     clickUrl: 'http://www.ford.com/cars/mustang',
-            //     movieUrl: 'mustang.mp4'
-            // });
-
-             var projector = new Projector(el, {
-                columns: 10,
-                rows: 3,
+            var projector = new Projector(el, {
+                columns: 8,
+                rows: 6,
                 frameRate: 24,
                 totalFrames: 736,
                 width: 854,
