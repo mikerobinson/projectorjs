@@ -32,7 +32,6 @@ function Projector(el, options) {
 		eventPixel: '',
 		events: [],
 		lookAhead: 3,
-		synchMovie: false,
 		movieUrl: '',
 		clickUrl: '',
 		clickToMovie: true,
@@ -134,18 +133,29 @@ Projector.prototype.make = function() {
 	link.style.cssText = 'position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 9';
 	this.elements.link = this.elements.container.appendChild(link);
 
+	var audio = document.createElement('audio');
+	audio.src = this.settings.audioUrl;
+	audio.autoplay = false;
+	audio.style.display = 'none';
+	this.elements.audio = this.elements.container.appendChild(audio);
+
 	// Render the real video element
 	if (this.settings.movieUrl) {
 		var video = document.createElement('video');
 		video.autoplay = false;
-		video.src = this.settings.movieUrl;
-		// video.preload = false;
+		video.preload = false;
 		video.style.width = this.settings.width + 'px';
 		video.style.height = this.settings.height + 'px';
 		video.style.zIndex = -1;
 		video.controls = false; // override video controls with javascript ones
-
 		this.elements.movie = this.elements.container.appendChild(video);
+
+		var source = document.createElement('source');
+		source.type = 'video/mp4';
+		source.src = this.settings.movieUrl;
+		this.elements.movie.appendChild(source);
+
+		// this.elements.movie.src = this.settings.movieUrl; // Set src afer append or else it loads twice
 	}
 };
 
@@ -167,7 +177,7 @@ Projector.prototype.bindEvents = function() {
 
 	// Rewind
 	if (this.elements.rewind) this.elements.rewind.onclick = function() {
-		that.rewind.call(that, true);
+		that.rewind.call(that, false);
 	}
 
 	// Mute
@@ -272,7 +282,12 @@ Projector.prototype.startMovie = function() {
 Projector.prototype.handleClick = function(e) {
 	// Handle swapping to real movie 
 	if (this.settings.movieUrl && this.settings.clickToMovie && !this.state.realMovieActive) {
-		this.playRealMovie();
+		// this.playRealMovie();
+		
+		// var currentTime = this.state.frame / this.settings.frameRate;
+		// this.elements.movie.currentTime = currentTime;
+		this.playAudio();
+
 		e.preventDefault();
 
 	} else if (this.state.realMovieActive) {
@@ -281,7 +296,7 @@ Projector.prototype.handleClick = function(e) {
 	}
 
 	// Any click should stop the image loop to preserve CPU & battery
-	if (this.state.tickTimeout) clearTimeout(this.state.tickTimeout);
+	// if (this.state.tickTimeout) clearTimeout(this.state.tickTimeout);
 };
 
 /**
@@ -304,6 +319,13 @@ Projector.prototype.playRealMovie = function() {
 	this.elements.movie.play();
 
 	this.state.realMovieActive = true;
+};
+
+Projector.prototype.playAudio = function() {
+	var currentTime = this.state.frame / this.settings.frameRate;
+	this.elements.audio.currentTime = currentTime;
+	
+	this.elements.audio.play();
 };
 
 /**
@@ -468,6 +490,9 @@ Projector.prototype.tick = function(frame) {
 					// Preload next image
 					that.doLookAhead(frame);
 
+					// Synch the audio
+					that.synchAudio.call(that, frame);
+
 					// Keep track of current frame
 					that.state.frame = frame;
 					frame++;
@@ -533,6 +558,17 @@ Projector.prototype.doQualityCheck = function() {
 	if (loadPercentage > 100 && this.state.quality > 0) this.state.quality--; // Bad
 	if (loadPercentage > 150 && this.state.quality > 0) this.state.quality--; // Really bad
 	if (loadPercentage > 200 && this.state.quality > 0) this.state.quality--; // Atrocious
+};
+
+Projector.prototype.synchAudio = function(frame) {
+	var audioFrame = this.elements.audio.currentTime * this.settings.frameRate;
+	if(audioFrame > frame) {
+		this.elements.audio.playbackRate = 0.97;
+	} else if(audioFrame < frame) {
+		this.elements.audio.playbackRate = 1.03;
+	} else {
+		this.elements.audio.playbackRate = 1;
+	}
 };
 
 Projector.prototype.showLoading = function() {
