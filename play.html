@@ -52,6 +52,17 @@
             .mute.mute-on {
                 background: url(mute-on.png) left top no-repeat;
             }
+
+            .loading {
+                position: absolute;
+                bottom: 5px;
+                right: 5px;
+                z-index: 5;
+                display: none;
+                width: 38px;
+                height: 38px;
+                background: url(spinner.png) left top no-repeat;
+            }
         </style>
     </head>
     <body>
@@ -65,14 +76,30 @@
                 columns: 8,
                 rows: 6,
                 frameRate: 24,
-                totalFrames: 736,
-                width: 854,
-                height: 438,
-                imageFiles: 'frames/mustang24/final/%q-%i.jpg',
+                totalFrames: 2787,
+                width: 640,
+                height: 360,
+                imageFiles: 'frames/pulp24/final/%q-%i.jpg',
+                // imageFiles: 'frames/pulp24/final/100x50-%i.jpg',
                 clickToMovie: true,
-                quality: 3,
-                clickUrl: 'http://www.ford.com/cars/mustang',
-                movieUrl: 'mustang.mp4'
+                quality: 0,
+                dynamicQuality: true,
+                clickUrl: 'http://www.tapad.com',
+                movieUrl: 'pulp.mp4',
+                audioUrl: 'frames/pulp24/audio/96-44.mp3',
+                eventSrc: 'http://www.tapad.com/pixel.gif?mark=:mark',
+                events: [
+                {
+                    mark: 1,
+                    name: '1'
+                },
+                {
+                    mark: 25,
+                    name: '25'
+                }, {
+                    mark: 50,
+                    name: '50'
+                }]
             });
 
             projector.init();

@@ -12,6 +12,9 @@ function Projector(el, options) {
 	}
 
 	this.state = {
+		audio: false,
+		movie: false,
+		muted: false,
 		quality: 0,
 		started: false,
 		playing: true,
@@ -36,7 +39,7 @@ function Projector(el, options) {
 		clickUrl: '',
 		clickToMovie: true,
 		quality: 0,
-		qualities: [10, 25, 50, 100],
+		qualities: ['10x50', '10x100', '25x100', '50x100', '100'],
 		dynamicQuality: true
 
 	}
@@ -88,6 +91,7 @@ Projector.prototype.make = function() {
 	var div = document.createElement('div');
 	div.style.backgroundRepeat = 'no-repeat';
 	div.style.backgroundPosition = '0 0';
+	div.style.backgroundSize = (this.settings.columns * this.settings.width) + 'px ' + (this.settings.rows * this.settings.height) + 'px';
 	div.style.position = 'relative';
 	div.style.height = this.settings.height + 'px';
 	div.style.width = this.settings.width + 'px';
@@ -103,10 +107,8 @@ Projector.prototype.make = function() {
 
 	// Loading spinner
 	var loading = document.createElement('div');
-	loading.style.cssText = 'position: absolute; top: 5px; right: 5px; z-index: 5; display: none; width: 38px; height: 38px; background: url(spinner.png) left top no-repeat';
+	loading.className = 'loading';
 	this.elements.loading = this.elements.container.appendChild(loading);
-
-
 
 	// Init controls
 	if (this.settings.controls) {
@@ -133,27 +135,17 @@ Projector.prototype.make = function() {
 	link.style.cssText = 'position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 9';
 	this.elements.link = this.elements.container.appendChild(link);
 
-	var audio = document.createElement('audio');
-	audio.src = this.settings.audioUrl;
-	audio.autoplay = false;
-	audio.style.display = 'none';
-	this.elements.audio = this.elements.container.appendChild(audio);
-
 	// Render the real video element
 	if (this.settings.movieUrl) {
 		var video = document.createElement('video');
 		video.autoplay = false;
 		video.preload = false;
+		// video.src = this.settings.movieUrl;
 		video.style.width = this.settings.width + 'px';
 		video.style.height = this.settings.height + 'px';
 		video.style.zIndex = -1;
 		video.controls = false; // override video controls with javascript ones
-		this.elements.movie = this.elements.container.appendChild(video);
-
-		var source = document.createElement('source');
-		source.type = 'video/mp4';
-		source.src = this.settings.movieUrl;
-		this.elements.movie.appendChild(source);
+		this.elements.container.appendChild(video);
 
 		// this.elements.movie.src = this.settings.movieUrl; // Set src afer append or else it loads twice
 	}
@@ -177,7 +169,7 @@ Projector.prototype.bindEvents = function() {
 
 	// Rewind
 	if (this.elements.rewind) this.elements.rewind.onclick = function() {
-		that.rewind.call(that, false);
+		that.rewind.call(that, true);
 	}
 
 	// Mute
@@ -202,7 +194,7 @@ Projector.prototype.play = function() {
 		Projector.addClass(this.elements.container, 'playing');
 		Projector.removeClass(this.elements.container, 'paused');
 
-		if (this.state.realMovieActive) this.elements.movie.play();
+		if (this.state.movie) this.elements.movie.play();
 	}
 };
 
@@ -220,8 +212,14 @@ Projector.prototype.pause = function() {
 		Projector.removeClass(this.elements.container, 'playing');
 	}
 
-	if (this.state.realMovieActive) {
+	// Pause movie
+	if (this.state.movie) {
 		(this.state.playing) ? this.elements.movie.play() : this.elements.movie.pause();
+	}
+
+	// Pause audio
+	if (this.state.audio) {
+		(this.state.playing) ? this.elements.audio.play() : this.elements.audio.pause();
 	}
 };
 
@@ -230,7 +228,7 @@ Projector.prototype.pause = function() {
  * @param  {boolean} play Start the movie
  */
 Projector.prototype.rewind = function(play) {
-	if (this.state.realMovieActive) {
+	if (this.state.movie) {
 		this.elements.movie.currentTime = 0;
 	} else {
 		this.startMovie();
@@ -245,8 +243,9 @@ Projector.prototype.rewind = function(play) {
 Projector.prototype.mute = function() {
 	this.state.muted = !this.state.muted;
 
-	if (this.state.realMovieActive) {
+	if (this.state.movie || this.state.audio) {
 		this.elements.movie.muted = this.state.muted;
+		this.elements.audio.muted = this.state.muted;
 
 		this.elements.mute.style.backgroundImage = (this.state.muted) ? 'url(mute-on.png)' : 'url(mute-off.png)';
 
@@ -266,6 +265,9 @@ Projector.prototype.startMovie = function() {
 
 	if (this.state.tickTimeout) clearTimeout(this.state.tickTimeout);
 
+	// Rewind audio
+	if (this.state.audio) this.elements.audio.currentTime = 0;
+
 	for (var i = 0; i < this.collection.length; i++) {
 		this.collection[i].status = 'pristine';
 	}
@@ -281,7 +283,7 @@ Projector.prototype.startMovie = function() {
  */
 Projector.prototype.handleClick = function(e) {
 	// Handle swapping to real movie 
-	if (this.settings.movieUrl && this.settings.clickToMovie && !this.state.realMovieActive) {
+	if (this.settings.movieUrl && this.settings.clickToMovie && !this.state.movie) {
 		// this.playRealMovie();
 		
 		// var currentTime = this.state.frame / this.settings.frameRate;
@@ -290,7 +292,7 @@ Projector.prototype.handleClick = function(e) {
 
 		e.preventDefault();
 
-	} else if (this.state.realMovieActive) {
+	} else if (this.state.movie) {
 		// Since the ad spawns a new tab, pause the playing movie
 		this.elements.movie.pause();
 	}
@@ -318,14 +320,32 @@ Projector.prototype.playRealMovie = function() {
 	this.elements.movie.style.zIndex = 1;
 	this.elements.movie.play();
 
-	this.state.realMovieActive = true;
+	this.state.movie = true;
 };
 
+/**
+ * Enable audio with looping images
+ */
 Projector.prototype.playAudio = function() {
-	var currentTime = this.state.frame / this.settings.frameRate;
-	this.elements.audio.currentTime = currentTime;
+	var that = this;
+
+	this.elements.audio = new Audio();
+	this.elements.audio.addEventListener('canplaythrough', function () {
+		console.log(that.elements.audio.readyState);
+
+		that.synchAudio.call(that, that.state.frame, true); // Force synch audio
+
+		// Play sound
+		that.elements.audio.play();
 	
-	this.elements.audio.play();
+		// Enable mute button
+		that.elements.mute.style.display = 'block';
+
+		that.state.audio = true;
+	});
+
+	// Load audio
+	this.elements.audio.src = this.settings.audioUrl;
 };
 
 /**
@@ -348,6 +368,7 @@ Projector.prototype.loadImage = function(index, callback) {
 		src = src.replace('%q', this.settings.qualities[this.state.quality]);
 		src = src.replace('%i', index);
 
+		// TESTING, REMOVE IN PROD
 		src = src + '?ord=' + Math.random().toString().substr(2); // Cachebuster, for debugging
 
 		item.src = src;
@@ -490,19 +511,27 @@ Projector.prototype.tick = function(frame) {
 					// Preload next image
 					that.doLookAhead(frame);
 
+					// Check the audio
+					if(that.state.audio && that.elements.audio.paused) that.elements.audio.play();
+
 					// Synch the audio
-					that.synchAudio.call(that, frame);
+					if(that.state.audio && frame % that.settings.frameRate == 0) {
+						that.synchAudio.call(that, frame);
+					}
 
 					// Keep track of current frame
 					that.state.frame = frame;
 					frame++;
 				} else {
+					if(that.state.audio && !that.elements.audio.paused) that.elements.audio.pause();
+
 					that.showLoading.call(that);
 				}
 
 				that.tick(frame);
 			} else {
-
+				if(that.state.audio && !that.elements.audio.paused) that.elements.audio.pause();
+				that.showLoading.call(that);
 				that.tick(frame);
 			}
 		}, 1000 / this.settings.frameRate);
@@ -518,11 +547,12 @@ Projector.prototype.doPixelTracking = function(frame) {
 
 	for (var i = 0; i < this.settings.events.length; i++) {
 		if (completion >= this.settings.events[i].mark && !this.settings.events[i].src) {
-			this.settings.events[i].src = this.settings.eventsrc.replace(':mark', this.settings.events[i].name);
+			// Bind pixel src to event so we can check if we've already requested it later
+			this.settings.events[i].src = this.settings.eventSrc.replace(':mark', this.settings.events[i].name);
 
 			var pixelImage = new Image();
-			//pixelImage.src = this.settings.events[i].src;
-			pixelImage.src = 'htt://www.example.com/image.gif'; // temp
+			pixelImage.src = this.settings.events[i].src;
+			// pixelImage.src = 'htt://www.example.com/image.gif'; // temp
 		}
 	}
 };
@@ -558,10 +588,27 @@ Projector.prototype.doQualityCheck = function() {
 	if (loadPercentage > 100 && this.state.quality > 0) this.state.quality--; // Bad
 	if (loadPercentage > 150 && this.state.quality > 0) this.state.quality--; // Really bad
 	if (loadPercentage > 200 && this.state.quality > 0) this.state.quality--; // Atrocious
+
+
+	// console.log('Quality', this.settings.qualities[this.state.quality]);
 };
 
-Projector.prototype.synchAudio = function(frame) {
+/**
+ * Synch up the audio with the framerate
+ * When the audio is behind, speed it up.
+ * When the audio is ahead, slow it down.
+ * @param  {integer} frame [description]
+ */
+Projector.prototype.synchAudio = function(frame, force) {
+
+	// Force synch audio, which causes a stutter if you do it all the time
+	if(force) {
+		this.elements.audio.currentTime = frame / this.settings.frameRate;
+		console.log(this.elements.audio.currentTime, frame / this.settings.frameRate);
+	}
+
 	var audioFrame = this.elements.audio.currentTime * this.settings.frameRate;
+
 	if(audioFrame > frame) {
 		this.elements.audio.playbackRate = 0.97;
 	} else if(audioFrame < frame) {
@@ -569,8 +616,13 @@ Projector.prototype.synchAudio = function(frame) {
 	} else {
 		this.elements.audio.playbackRate = 1;
 	}
+
+	console.log('audio rate', this.elements.audio.playbackRate);
 };
 
+/**
+ * Show and animate the loading spinner
+ */
 Projector.prototype.showLoading = function() {
 	if (this.state.loadingInterval) return; // Don't allow more than one
 
@@ -589,6 +641,9 @@ Projector.prototype.showLoading = function() {
 	this.elements.loading.style.display = 'block';
 };
 
+/**
+ * Hide the loading spinner
+ */
 Projector.prototype.hideLoading = function() {
 	if (!this.state.loadingInterval) return;
 
@@ -623,14 +678,30 @@ Projector.extend = function(dest, src) {
 	return dest;
 };
 
+/**
+ * Add CSS class to element
+ * @param {object} element   The element to add a class to
+ * @param {string} className The class to add
+ */
 Projector.addClass = function(element, className) {
 	if (element.className.indexOf(className) < 0) element.className = (className + ' ') + element.className;
 }
 
+/**
+ * Remove CSS class from element
+ * @param {object} element   The element to remove a class from
+ * @param {string} className The class to remove
+ */
 Projector.removeClass = function(element, className) {
 	element.className = element.className.replace(className + ' ', '');
 }
 
+/**
+ * Toggle a CSS class on an element
+ * @param  {object} element   The element to toggle a class on
+ * @param  {string} className The class to toggle
+ * @param  {boolean} on        Whether to add or remove the class
+ */
 Projector.toggleClass = function (element, className, on) {
 	if(on) {
 		Projector.addClass(element, className);
