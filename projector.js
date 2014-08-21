@@ -39,11 +39,14 @@ function Projector(el, options) {
 		clickUrl: '',
 		clickToMovie: true,
 		quality: 0,
-		qualities: ['10x50', '10x100', '25x100', '50x100', '100'],
+		qualities: ['10x50', '10x100', '25x100', '50x100', '100x100'],
 		dynamicQuality: true
 
 	}
 	this.settings = Projector.extend(options, this.settings);
+
+	// Account for 0 index
+	this.settings.totalFrames--;
 
 	this.collection = [];
 }
@@ -194,7 +197,7 @@ Projector.prototype.play = function() {
 		Projector.addClass(this.elements.container, 'playing');
 		Projector.removeClass(this.elements.container, 'paused');
 
-		if (this.state.movie) this.elements.movie.play();
+		// if (this.state.movie) this.elements.movie.play();
 	}
 };
 
@@ -224,17 +227,15 @@ Projector.prototype.pause = function() {
 };
 
 /**
- * Rewind the movie
+ * Rewind the ad
  * @param  {boolean} play Start the movie
  */
-Projector.prototype.rewind = function(play) {
-	if (this.state.movie) {
-		this.elements.movie.currentTime = 0;
-	} else {
-		this.startMovie();
-	}
+Projector.prototype.rewind = function (play) {
+	this.startMovie();
+	if(play) this.play();
 
-	if (play) this.play();
+	this.state.frame = 0;
+	this.synchAudio(0, true);
 };
 
 /**
@@ -244,10 +245,10 @@ Projector.prototype.mute = function() {
 	this.state.muted = !this.state.muted;
 
 	if (this.state.movie || this.state.audio) {
-		this.elements.movie.muted = this.state.muted;
+		// this.elements.movie.muted = this.state.muted;
 		this.elements.audio.muted = this.state.muted;
 
-		this.elements.mute.style.backgroundImage = (this.state.muted) ? 'url(mute-on.png)' : 'url(mute-off.png)';
+		this.elements.mute.style.backgroundImage = (this.state.muted) ? 'url(images/mute-on.png)' : 'url(images/mute-off.png)';
 
 		Projector.toggleClass(this.elements.mute, 'mute-on', this.state.muted);
 		Projector.toggleClass(this.elements.mute, 'mute-off', !this.state.muted);
@@ -265,15 +266,12 @@ Projector.prototype.startMovie = function() {
 
 	if (this.state.tickTimeout) clearTimeout(this.state.tickTimeout);
 
-	// Rewind audio
-	if (this.state.audio) this.elements.audio.currentTime = 0;
-
 	for (var i = 0; i < this.collection.length; i++) {
 		this.collection[i].status = 'pristine';
 	}
 
 	this.loadImage(0, function() {
-		that.tick.apply(that)
+		that.tick.apply(that);
 	});
 };
 
@@ -285,7 +283,7 @@ Projector.prototype.handleClick = function(e) {
 	// Handle swapping to real movie 
 	if (this.settings.movieUrl && this.settings.clickToMovie && !this.state.movie) {
 		// this.playRealMovie();
-		
+
 		// var currentTime = this.state.frame / this.settings.frameRate;
 		// this.elements.movie.currentTime = currentTime;
 		this.playAudio();
@@ -329,23 +327,24 @@ Projector.prototype.playRealMovie = function() {
 Projector.prototype.playAudio = function() {
 	var that = this;
 
-	this.elements.audio = new Audio();
-	this.elements.audio.addEventListener('canplaythrough', function () {
-		console.log(that.elements.audio.readyState);
+	if (!this.elements.audio) {
+		this.elements.audio = new Audio();
+		this.elements.audio.muted = this.state.muted;
+		this.elements.audio.src = this.settings.audioUrl;
 
-		that.synchAudio.call(that, that.state.frame, true); // Force synch audio
+		this.elements.audio.addEventListener('canplaythrough', function() {
+			// Play sound
+			that.elements.audio.play();
 
-		// Play sound
-		that.elements.audio.play();
-	
-		// Enable mute button
-		that.elements.mute.style.display = 'block';
+			// Force synch audio
+			that.synchAudio.call(that, that.state.frame, true); 
 
-		that.state.audio = true;
-	});
+			// Enable mute button
+			that.elements.mute.style.display = 'block';
 
-	// Load audio
-	this.elements.audio.src = this.settings.audioUrl;
+			that.state.audio = true;
+		});
+	}
 };
 
 /**
@@ -369,7 +368,7 @@ Projector.prototype.loadImage = function(index, callback) {
 		src = src.replace('%i', index);
 
 		// TESTING, REMOVE IN PROD
-		src = src + '?ord=' + Math.random().toString().substr(2); // Cachebuster, for debugging
+		// src = src + '?ord=' + Math.random().toString().substr(2); // Cachebuster, for debugging
 
 		item.src = src;
 
@@ -398,7 +397,7 @@ Projector.prototype.loadImage = function(index, callback) {
  * @param  {object} targetElement The elemen to render the image on
  */
 Projector.prototype.drawImage = function(image, frame, targetElement) {
-	targetElement.style.backgroundImage = 'url(' + image + ')';
+	targetElement.style.backgroundImage = 'url(/' + image + ')';
 
 	var localFrame = frame % this.state.framesPerSlide; // frame on current image
 	var row = Math.floor(localFrame / this.settings.columns);
@@ -512,25 +511,25 @@ Projector.prototype.tick = function(frame) {
 					that.doLookAhead(frame);
 
 					// Check the audio
-					if(that.state.audio && that.elements.audio.paused) that.elements.audio.play();
+					if (that.state.audio && that.elements.audio.paused) that.elements.audio.play();
 
 					// Synch the audio
-					if(that.state.audio && frame % that.settings.frameRate == 0) {
-						that.synchAudio.call(that, frame);
+					if (that.state.audio && frame % that.settings.frameRate == 0) {
+						that.synchAudio.call(that, frame, false);
 					}
 
 					// Keep track of current frame
 					that.state.frame = frame;
 					frame++;
 				} else {
-					if(that.state.audio && !that.elements.audio.paused) that.elements.audio.pause();
+					if (that.state.audio && !that.elements.audio.paused) that.elements.audio.pause();
 
 					that.showLoading.call(that);
 				}
 
 				that.tick(frame);
 			} else {
-				if(that.state.audio && !that.elements.audio.paused) that.elements.audio.pause();
+				if (that.state.audio && !that.elements.audio.paused) that.elements.audio.pause();
 				that.showLoading.call(that);
 				that.tick(frame);
 			}
@@ -600,24 +599,22 @@ Projector.prototype.doQualityCheck = function() {
  * @param  {integer} frame [description]
  */
 Projector.prototype.synchAudio = function(frame, force) {
-
 	// Force synch audio, which causes a stutter if you do it all the time
-	if(force) {
+	if (force) {
 		this.elements.audio.currentTime = frame / this.settings.frameRate;
-		console.log(this.elements.audio.currentTime, frame / this.settings.frameRate);
 	}
 
 	var audioFrame = this.elements.audio.currentTime * this.settings.frameRate;
 
-	if(audioFrame > frame) {
+	if (audioFrame > frame) {
 		this.elements.audio.playbackRate = 0.97;
-	} else if(audioFrame < frame) {
+	} else if (audioFrame < frame) {
 		this.elements.audio.playbackRate = 1.03;
 	} else {
 		this.elements.audio.playbackRate = 1;
 	}
 
-	console.log('audio rate', this.elements.audio.playbackRate);
+	// console.log('audio rate', this.elements.audio.playbackRate);
 };
 
 /**
@@ -702,8 +699,8 @@ Projector.removeClass = function(element, className) {
  * @param  {string} className The class to toggle
  * @param  {boolean} on        Whether to add or remove the class
  */
-Projector.toggleClass = function (element, className, on) {
-	if(on) {
+Projector.toggleClass = function(element, className, on) {
+	if (on) {
 		Projector.addClass(element, className);
 	} else {
 		Projector.removeClass(element, className);

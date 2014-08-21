@@ -1,6 +1,7 @@
 .test_server
 node_modules
 frames
+videos
 
 # Compiled source #
 ###################
