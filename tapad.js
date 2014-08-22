@@ -26,7 +26,6 @@
 
 				if (rect.bottom < bottom || rect.top > top) {
 					// Out of bounds
-					console.log(ad);
 					ad.contentWindow.postMessage('pause', '*');
 				} else {
 					// In bounds

@@ -1,3 +1,9 @@
+/**
+ * Created by Mike Robinson 
+ * https://github.com/mikerobinson
+ * mike.robinson at gmail
+ */
+
 function Projector(el, options) {
 	this.elements = {
 		container: el,
@@ -13,6 +19,7 @@ function Projector(el, options) {
 
 	this.state = {
 		audio: false,
+		locked: false,
 		movie: false,
 		muted: false,
 		quality: 0,
@@ -162,12 +169,12 @@ Projector.prototype.bindEvents = function() {
 
 	// Play
 	if (this.elements.play) this.elements.play.onclick = function() {
-		that.play.call(that);
+		that.play.call(that, true);
 	}
 
 	// Pause
 	if (this.elements.pause) this.elements.pause.onclick = function() {
-		that.pause.call(that);
+		that.state.playing ? that.pause.call(that, true) : that.play.call(that, true);
 	}
 
 	// Rewind
@@ -194,41 +201,42 @@ Projector.prototype.bindEvents = function() {
 /**
  * Play the movie
  */
-Projector.prototype.play = function() {
-	if (!this.state.started) {
-		this.startMovie();
-	} else {
-		this.state.playing = true;
-		Projector.addClass(this.elements.container, 'playing');
-		Projector.removeClass(this.elements.container, 'paused');
+Projector.prototype.play = function (unlock) {
+	if(!this.state.locked || unlock) {
+		this.state.locked = unlock;
 
-		// if (this.state.movie) this.elements.movie.play();
+		if (!this.state.started) {
+			this.startMovie();
+		} else {
+			this.state.playing = true;
+			Projector.addClass(this.elements.container, 'playing');
+			Projector.removeClass(this.elements.container, 'paused');
+
+			// Play movie
+			if (this.state.movie) this.elements.movie.play();
+
+			// Play audio
+			if (this.state.audio) this.elements.audio.play();
+		}	
 	}
 };
 
 /**
  * Pause the movie
  */
-Projector.prototype.pause = function() {
-	this.state.playing = !this.state.playing;
-
-	if (this.state.playing) {
-		Projector.addClass(this.elements.container, 'playing');
-		Projector.removeClass(this.elements.container, 'paused');
-	} else {
-		Projector.addClass(this.elements.container, 'paused');
-		Projector.removeClass(this.elements.container, 'playing');
-	}
+Projector.prototype.pause = function (lock) {
+	this.state.playing = false;
+	
+	if(lock) this.state.locked = true; // User pause, cannot override unless user hits play
+	
+	Projector.addClass(this.elements.container, 'paused');
+	Projector.removeClass(this.elements.container, 'playing');
 
 	// Pause movie
-	if (this.state.movie) {
-		(this.state.playing) ? this.elements.movie.play() : this.elements.movie.pause();
-	}
+	if (this.state.movie) this.elements.movie.pause();
 
 	// Pause audio
-	if (this.state.audio) {
-		(this.state.playing) ? this.elements.audio.play() : this.elements.audio.pause();
-	}
+	if (this.state.audio) this.elements.audio.pause();
 };
 
 /**
@@ -286,10 +294,10 @@ Projector.prototype.startMovie = function() {
 Projector.prototype.handleMessage = function (event) {
 	switch(event.data) {
 		case "pause":
-			this.pause();
+			this.pause(false);
 			break;
 		case "play":
-			this.play();
+			this.play(false);
 			break;
 	}
 };
@@ -299,23 +307,14 @@ Projector.prototype.handleMessage = function (event) {
  * Currently handles playing the real movie on click instead of clicking through
  */
 Projector.prototype.handleClick = function(e) {
-	// Handle swapping to real movie 
-	if (this.settings.movieUrl && this.settings.clickToMovie && !this.state.movie) {
-		// this.playRealMovie();
-
-		// var currentTime = this.state.frame / this.settings.frameRate;
-		// this.elements.movie.currentTime = currentTime;
+	// Handle enabling audio
+	if (this.settings.audioUrl && this.settings.clickToMovie && !this.state.audio) {
 		this.playAudio();
-
 		e.preventDefault();
-
-	} else if (this.state.movie) {
+	} else if (this.state.audio) {
 		// Since the ad spawns a new tab, pause the playing movie
-		this.elements.movie.pause();
+		this.pause(true);
 	}
-
-	// Any click should stop the image loop to preserve CPU & battery
-	// if (this.state.tickTimeout) clearTimeout(this.state.tickTimeout);
 };
 
 /**
@@ -416,7 +415,7 @@ Projector.prototype.loadImage = function(index, callback) {
  * @param  {object} targetElement The elemen to render the image on
  */
 Projector.prototype.drawImage = function(image, frame, targetElement) {
-	targetElement.style.backgroundImage = 'url(/' + image + ')';
+	targetElement.style.backgroundImage = 'url(' + image + ')';
 
 	var localFrame = frame % this.state.framesPerSlide; // frame on current image
 	var row = Math.floor(localFrame / this.settings.columns);
