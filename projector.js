@@ -184,6 +184,11 @@ Projector.prototype.bindEvents = function() {
 	if (this.elements.link) this.elements.link.onclick = function(e) {
 		that.handleClick.call(that, e);
 	}
+
+	// Window messages (for iframe communication)
+	addEventListener('message', function (e) {
+		that.handleMessage.call(that, e);
+	}, false);
 };
 
 /**
@@ -273,6 +278,20 @@ Projector.prototype.startMovie = function() {
 	this.loadImage(0, function() {
 		that.tick.apply(that);
 	});
+};
+
+/**
+ * Handle messages posted to the window. Useful when projector is served in an iframe and needs to be controlled via the parent window.
+ */
+Projector.prototype.handleMessage = function (event) {
+	switch(event.data) {
+		case "pause":
+			this.pause();
+			break;
+		case "play":
+			this.play();
+			break;
+	}
 };
 
 /**

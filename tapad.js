@@ -4,34 +4,33 @@
  * @return {[type]}   [description]
  */
 
-(function () {
+(function() {
 	var didScroll = false;
-	var ad = document.querySelector('div.tapad-ad');
-	
+	var ads = document.querySelectorAll('.ad-tapad');
 
-	window.addEventListener('scroll', function (e) {
+	window.addEventListener('scroll', function(e) {
 		didScroll = true;
 	});
 
-	setInterval(function () {
-		if(didScroll) {
-			
+	setInterval(function() {
+		if (didScroll) {
+
 			didScroll = false;
-			
-			var rect = ad.getBoundingClientRect();
 
-			var bottom = (rect.height * 0.25);
-			var top = window.innerHeight - (rect.height * 0.25);
+			for (var i = 0; i < ads.length; i++) {
+				var ad = ads[i];
 
-			if(rect.bottom < bottom || rect.top > top) {
-				// Out of bounds
-				if(projector.state.started && projector.state.playing) projector.pause();
-			} else {
-				// In bounds
-				if(!projector.state.started) {
-					projector.startMovie();
+				var rect = ad.getBoundingClientRect();
+				var bottom = (rect.height * 0.25);
+				var top = window.innerHeight - (rect.height * 0.25);
+
+				if (rect.bottom < bottom || rect.top > top) {
+					// Out of bounds
+					console.log(ad);
+					ad.contentWindow.postMessage('pause', '*');
 				} else {
-					projector.play();
+					// In bounds
+					ad.contentWindow.postMessage('play', '*');
 				}
 			}
 		}
