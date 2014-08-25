@@ -303,7 +303,8 @@ Projector.prototype.startMovie = function () {
 	}
 
 	this.loadImage(0, function () {
-		that.tick.apply(that);
+		that.play.call(that);
+		that.tick.call(that);
 	});
 };
 
