@@ -171,6 +171,13 @@ Projector.prototype.make = function () {
 
 		// this.elements.movie.src = this.settings.movieUrl; // Set src afer append or else it loads twice
 	}
+
+	// Create the audio element
+	this.elements.audio = new Audio();
+	this.elements.audio.muted = this.state.muted;
+	this.elements.audio.src = this.settings.audioUrl;
+	this.elements.audio.preload = true;
+
 };
 
 /**
@@ -327,14 +334,8 @@ Projector.prototype.handleMessage = function (event) {
  * Currently handles playing the real movie on click instead of clicking through
  */
 Projector.prototype.handleClick = function (e) {
-	// // Handle enabling audio
-	// if (this.settings.audioUrl && this.settings.clickToMovie && !this.state.audio) {
-	// 	this.playAudio();
-	// 	e.preventDefault();
-	// } else if (this.state.audio) {
-	// 	// Since the ad spawns a new tab, pause the playing movie
-	// 	this.pause(true);
-	// }
+	// Since the ad spawns a new tab, pause the playing movie
+	this.pause(true);
 };
 
 /**
@@ -375,23 +376,21 @@ Projector.prototype.playRealMovie = function () {
 Projector.prototype.playAudio = function () {
 	var that = this;
 
-	if (!this.elements.audio) {
-		this.elements.audio = new Audio();
-		this.elements.audio.muted = this.state.muted;
-		this.elements.audio.src = this.settings.audioUrl;
+	if(this.elements.audio.readyState == 4) {
+		// Play sound
+		this.elements.audio.play();
 
+		// Force synch audio
+		this.synchAudio(this.state.frame, true); 
+
+		// Enable mute button & hide equalizer
+		this.elements.mute.style.display = 'block';
+		this.elements.equalizer.style.display = 'none';
+
+		this.state.audio = true;
+	} else {
 		this.elements.audio.addEventListener('canplaythrough', function () {
-			// Play sound
-			that.elements.audio.play();
-
-			// Force synch audio
-			that.synchAudio.call(that, that.state.frame, true); 
-
-			// Enable mute button & hide equalizer
-			that.elements.mute.style.display = 'block';
-			that.elements.equalizer.style.display = 'none';
-
-			that.state.audio = true;
+			that.playAudio.call(that);
 		});
 	}
 };
