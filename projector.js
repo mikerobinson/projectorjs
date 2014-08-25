@@ -61,7 +61,7 @@ function Projector(el, options) {
 /**
  * Start the video
  */
-Projector.prototype.init = function() {
+Projector.prototype.init = function () {
 	this.make();
 	this.bindEvents();
 	if (this.settings.autoplay) this.startMovie();
@@ -70,15 +70,15 @@ Projector.prototype.init = function() {
 /**
  * Prepare the DOM elements
  */
-Projector.prototype.make = function() {
+Projector.prototype.make = function () {
 	// Calculate durations
 	this.state.framesPerSlide = this.settings.columns * this.settings.rows;
 	this.state.timePerSlide = ((this.settings.columns * this.settings.rows) / this.settings.frameRate) * 1000; // milliseconds
 	this.state.totalImages = Math.ceil(this.settings.totalFrames / this.state.framesPerSlide);
 
-	console.table({
-		state: this.state
-	});
+	// console.table({
+	// 	state: this.state
+	// });
 
 	// Transfer quality settings to state because it may be variable instead of fixed
 	this.state.quality = this.settings.quality;
@@ -130,9 +130,21 @@ Projector.prototype.make = function() {
 		this.elements.pause = this.elements.container.appendChild(control.cloneNode(true))
 		this.elements.pause.className = 'pause';
 
+		this.elements.play = this.elements.container.appendChild(control.cloneNode(true))
+		this.elements.play.className = 'play';
+
 		this.elements.mute = this.elements.container.appendChild(control.cloneNode(true));
 		this.elements.mute.className = 'mute mute-off';
 		this.elements.mute.style.display = 'none';
+
+		var div = document.createElement('div');
+		this.elements.equalizer = this.elements.container.appendChild(div.cloneNode(true));
+
+		this.elements.equalizer.className = 'bars';
+		for(var i = 0; i < 10; i++) {
+			var bar = this.elements.equalizer.appendChild(div.cloneNode(true));
+			bar.className = 'bar';
+		}
 	}
 
 
@@ -164,32 +176,37 @@ Projector.prototype.make = function() {
 /**
  * Bind all events
  */
-Projector.prototype.bindEvents = function() {
+Projector.prototype.bindEvents = function () {
 	var that = this;
 
 	// Play
-	if (this.elements.play) this.elements.play.onclick = function() {
+	if (this.elements.play) this.elements.play.onclick = function () {
 		that.play.call(that, true);
 	}
 
 	// Pause
-	if (this.elements.pause) this.elements.pause.onclick = function() {
+	if (this.elements.pause) this.elements.pause.onclick = function () {
 		that.state.playing ? that.pause.call(that, true) : that.play.call(that, true);
 	}
 
 	// Rewind
-	if (this.elements.rewind) this.elements.rewind.onclick = function() {
+	if (this.elements.rewind) this.elements.rewind.onclick = function () {
 		that.rewind.call(that, true);
 	}
 
 	// Mute
-	if (this.elements.mute) this.elements.mute.onclick = function() {
+	if (this.elements.mute) this.elements.mute.onclick = function () {
 		that.mute.call(that);
 	}
 
 	// Click
-	if (this.elements.link) this.elements.link.onclick = function(e) {
+	if (this.elements.link) this.elements.link.onclick = function (e) {
 		that.handleClick.call(that, e);
+	}
+
+	// Equalizer
+	if (this.elements.equalizer) this.elements.equalizer.onclick = function (e) {
+		that.handleEqualizerClick.call(that, e);
 	}
 
 	// Window messages (for iframe communication)
@@ -202,8 +219,10 @@ Projector.prototype.bindEvents = function() {
  * Play the movie
  */
 Projector.prototype.play = function (unlock) {
+	// console.log('unlock', unlock);
+
 	if(!this.state.locked || unlock) {
-		this.state.locked = unlock;
+		if(typeof unlock != 'undefined') this.state.locked = !unlock;
 
 		if (!this.state.started) {
 			this.startMovie();
@@ -245,7 +264,7 @@ Projector.prototype.pause = function (lock) {
  */
 Projector.prototype.rewind = function (play) {
 	this.startMovie();
-	if(play) this.play();
+	if(play) this.play(play);
 
 	this.state.frame = 0;
 	this.synchAudio(0, true);
@@ -254,7 +273,7 @@ Projector.prototype.rewind = function (play) {
 /**
  * Toggle mute on the real movie
  */
-Projector.prototype.mute = function() {
+Projector.prototype.mute = function () {
 	this.state.muted = !this.state.muted;
 
 	if (this.state.movie || this.state.audio) {
@@ -271,7 +290,7 @@ Projector.prototype.mute = function() {
 /**
  * Reset the movie and clean up any timeouts
  */
-Projector.prototype.startMovie = function() {
+Projector.prototype.startMovie = function () {
 	var that = this;
 
 	this.state.started = true;
@@ -283,7 +302,7 @@ Projector.prototype.startMovie = function() {
 		this.collection[i].status = 'pristine';
 	}
 
-	this.loadImage(0, function() {
+	this.loadImage(0, function () {
 		that.tick.apply(that);
 	});
 };
@@ -294,10 +313,10 @@ Projector.prototype.startMovie = function() {
 Projector.prototype.handleMessage = function (event) {
 	switch(event.data) {
 		case "pause":
-			this.pause(false);
+			this.pause();
 			break;
 		case "play":
-			this.play(false);
+			this.play();
 			break;
 	}
 };
@@ -306,21 +325,31 @@ Projector.prototype.handleMessage = function (event) {
  * Handle user interaction with base container, typically for the clickthrough
  * Currently handles playing the real movie on click instead of clicking through
  */
-Projector.prototype.handleClick = function(e) {
-	// Handle enabling audio
-	if (this.settings.audioUrl && this.settings.clickToMovie && !this.state.audio) {
-		this.playAudio();
-		e.preventDefault();
-	} else if (this.state.audio) {
-		// Since the ad spawns a new tab, pause the playing movie
-		this.pause(true);
-	}
+Projector.prototype.handleClick = function (e) {
+	// // Handle enabling audio
+	// if (this.settings.audioUrl && this.settings.clickToMovie && !this.state.audio) {
+	// 	this.playAudio();
+	// 	e.preventDefault();
+	// } else if (this.state.audio) {
+	// 	// Since the ad spawns a new tab, pause the playing movie
+	// 	this.pause(true);
+	// }
+};
+
+/**
+ * Handle equalizer being click, which enables the audio
+ * @param  {object} e Event object
+ */
+Projector.prototype.handleEqualizerClick = function(e) {
+	e.preventDefault();
+
+	this.playAudio();	
 };
 
 /**
  * Swaps out the looping images for a traditional movie element
  */
-Projector.prototype.playRealMovie = function() {
+Projector.prototype.playRealMovie = function () {
 	var that = this;
 
 	clearTimeout(this.state.tickTimeout); // Stop looping image
@@ -342,7 +371,7 @@ Projector.prototype.playRealMovie = function() {
 /**
  * Enable audio with looping images
  */
-Projector.prototype.playAudio = function() {
+Projector.prototype.playAudio = function () {
 	var that = this;
 
 	if (!this.elements.audio) {
@@ -350,15 +379,16 @@ Projector.prototype.playAudio = function() {
 		this.elements.audio.muted = this.state.muted;
 		this.elements.audio.src = this.settings.audioUrl;
 
-		this.elements.audio.addEventListener('canplaythrough', function() {
+		this.elements.audio.addEventListener('canplaythrough', function () {
 			// Play sound
 			that.elements.audio.play();
 
 			// Force synch audio
 			that.synchAudio.call(that, that.state.frame, true); 
 
-			// Enable mute button
+			// Enable mute button & hide equalizer
 			that.elements.mute.style.display = 'block';
+			that.elements.equalizer.style.display = 'none';
 
 			that.state.audio = true;
 		});
@@ -370,7 +400,7 @@ Projector.prototype.playAudio = function() {
  * @param  {integer}   index    The image index in the collection
  * @param  {Function} callback Callback when the image has loaded
  */
-Projector.prototype.loadImage = function(index, callback) {
+Projector.prototype.loadImage = function (index, callback) {
 	var that = this;
 	var item = this.collection[index];
 
@@ -397,7 +427,7 @@ Projector.prototype.loadImage = function(index, callback) {
 		var image = new Image();
 		image.src = src;
 
-		image.onload = function() {
+		image.onload = function () {
 			// Perform load time calculations
 			that.state.loadTimes.push(new Date().valueOf() - loadTime); // Finish measuring image load time
 
@@ -414,7 +444,7 @@ Projector.prototype.loadImage = function(index, callback) {
  * @param  {integer} frame         The frame of the image to render
  * @param  {object} targetElement The elemen to render the image on
  */
-Projector.prototype.drawImage = function(image, frame, targetElement) {
+Projector.prototype.drawImage = function (image, frame, targetElement) {
 	targetElement.style.backgroundImage = 'url(' + image + ')';
 
 	var localFrame = frame % this.state.framesPerSlide; // frame on current image
@@ -429,7 +459,7 @@ Projector.prototype.drawImage = function(image, frame, targetElement) {
  * @param  {Boolean} isActive Flag to request the inactive element
  * @return {object}           The active or inactive element
  */
-Projector.prototype.getScreen = function(isActive) {
+Projector.prototype.getScreen = function (isActive) {
 	return this.elements.image1.active == isActive ? this.elements.image1 : this.elements.image2;
 };
 
@@ -437,7 +467,7 @@ Projector.prototype.getScreen = function(isActive) {
  * Calculates the current image index based on frame
  * @param  {integer} frame The frame to calculate index from
  */
-Projector.prototype.getIndex = function(frame) {
+Projector.prototype.getIndex = function (frame) {
 	return Math.floor(frame / this.state.framesPerSlide)
 }
 
@@ -446,7 +476,7 @@ Projector.prototype.getIndex = function(frame) {
  * @param  {integer} index Collection index
  * @return {object}       The image
  */
-Projector.prototype.getImage = function(index) {
+Projector.prototype.getImage = function (index) {
 	if (index >= this.collection.length) return null;
 	return this.collection[index];
 }
@@ -456,7 +486,7 @@ Projector.prototype.getImage = function(index) {
  * @param  {integer} frame The frame to calculate percentage from
  * @return {number}       Percentage of video complete
  */
-Projector.prototype.getCompletionPercentage = function(frame) {
+Projector.prototype.getCompletionPercentage = function (frame) {
 	return (frame / this.settings.totalFrames) * 100;
 };
 
@@ -464,7 +494,7 @@ Projector.prototype.getCompletionPercentage = function(frame) {
  * Calculate average load time percentage based on last three images
  * @return {number} Average load time
  */
-Projector.prototype.getLoadTimePercentage = function() {
+Projector.prototype.getLoadTimePercentage = function () {
 	if (!this.state.loadTimes.length) return NaN;
 
 	// var times = this.state.loadTimes.slice(-3); // Get last 3 or less times
@@ -486,7 +516,7 @@ Projector.prototype.getLoadTimePercentage = function() {
  * Hide the current image and render the backup.
  * I use two images because hiding and showing an element is more performant than swapping out images on the same element
  */
-Projector.prototype.flipActiveImage = function() {
+Projector.prototype.flipActiveImage = function () {
 	var oneActive = this.elements.image1.active; // local variable, since we're about to change this.elements.image1.active
 
 	this.elements.image1.active = !(oneActive);
@@ -500,13 +530,13 @@ Projector.prototype.flipActiveImage = function() {
  * Move the video forward or backward by a frame amount
  * @param  {integer} frame The frame to move to
  */
-Projector.prototype.tick = function(frame) {
+Projector.prototype.tick = function (frame) {
 	// Loop
 	if (this.settings.loop && frame > this.settings.totalFrames) {
 		this.startMovie();
 	} else {
 		var that = this;
-		this.state.tickTimeout = setTimeout(function() {
+		this.state.tickTimeout = setTimeout(function () {
 			if (that.state.playing) {
 				frame = frame || 0;
 
@@ -559,7 +589,7 @@ Projector.prototype.tick = function(frame) {
  * Handle pixel tracking events for video completions
  * @param  {integer} frame The frame to calculate pixel events from
  */
-Projector.prototype.doPixelTracking = function(frame) {
+Projector.prototype.doPixelTracking = function (frame) {
 	var completion = this.getCompletionPercentage(frame);
 
 	for (var i = 0; i < this.settings.events.length; i++) {
@@ -578,13 +608,13 @@ Projector.prototype.doPixelTracking = function(frame) {
  * Make sure the next image set is always preloaded
  * @param  {integer} frame The frame to calculate the current image from
  */
-Projector.prototype.doLookAhead = function(frame) {
+Projector.prototype.doLookAhead = function (frame) {
 	var that = this;
 	var index = this.getIndex(frame) + 1;
 	var image = this.getImage(index);
 
 	if (image && image.status == 'pristine') {
-		this.loadImage(index, function() {
+		this.loadImage(index, function () {
 			that.drawImage(image.src, 0, that.getScreen(false));
 		});
 	}
@@ -593,7 +623,7 @@ Projector.prototype.doLookAhead = function(frame) {
 /**
  * Raise or lower the quality based on bandwidth availability
  */
-Projector.prototype.doQualityCheck = function() {
+Projector.prototype.doQualityCheck = function () {
 	var loadPercentage = this.getLoadTimePercentage();
 
 	// console.log('Load time percent', loadPercentage);
@@ -616,7 +646,7 @@ Projector.prototype.doQualityCheck = function() {
  * When the audio is ahead, slow it down.
  * @param  {integer} frame [description]
  */
-Projector.prototype.synchAudio = function(frame, force) {
+Projector.prototype.synchAudio = function (frame, force) {
 	// Force synch audio, which causes a stutter if you do it all the time
 	if (force) {
 		this.elements.audio.currentTime = frame / this.settings.frameRate;
@@ -638,13 +668,13 @@ Projector.prototype.synchAudio = function(frame, force) {
 /**
  * Show and animate the loading spinner
  */
-Projector.prototype.showLoading = function() {
+Projector.prototype.showLoading = function () {
 	if (this.state.loadingInterval) return; // Don't allow more than one
 
 	var that = this;
 	var counter = 0;
 
-	this.state.loadingInterval = setInterval(function() {
+	this.state.loadingInterval = setInterval(function () {
 		var frames = 19;
 		var frameWidth = 38;
 		var offset = counter * -frameWidth;
@@ -659,7 +689,7 @@ Projector.prototype.showLoading = function() {
 /**
  * Hide the loading spinner
  */
-Projector.prototype.hideLoading = function() {
+Projector.prototype.hideLoading = function () {
 	if (!this.state.loadingInterval) return;
 
 	clearInterval(this.state.loadingInterval);
@@ -672,7 +702,7 @@ Projector.prototype.hideLoading = function() {
  * @param  {object|array} src   object to extend from (copy properties from)
  * @return {object|array}       dest object
  */
-Projector.extend = function(dest, src) {
+Projector.extend = function (dest, src) {
 	var i, val;
 	for (i in src) {
 		if (!src.hasOwnProperty(i)) {
@@ -698,7 +728,7 @@ Projector.extend = function(dest, src) {
  * @param {object} element   The element to add a class to
  * @param {string} className The class to add
  */
-Projector.addClass = function(element, className) {
+Projector.addClass = function (element, className) {
 	if (element.className.indexOf(className) < 0) element.className = (className + ' ') + element.className;
 }
 
@@ -707,7 +737,7 @@ Projector.addClass = function(element, className) {
  * @param {object} element   The element to remove a class from
  * @param {string} className The class to remove
  */
-Projector.removeClass = function(element, className) {
+Projector.removeClass = function (element, className) {
 	element.className = element.className.replace(className + ' ', '');
 }
 
@@ -717,7 +747,7 @@ Projector.removeClass = function(element, className) {
  * @param  {string} className The class to toggle
  * @param  {boolean} on        Whether to add or remove the class
  */
-Projector.toggleClass = function(element, className, on) {
+Projector.toggleClass = function (element, className, on) {
 	if (on) {
 		Projector.addClass(element, className);
 	} else {
