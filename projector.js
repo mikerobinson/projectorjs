@@ -45,7 +45,7 @@ function Projector(el, options) {
 		lookAhead: 3,
 		movieUrl: '',
 		clickUrl: '',
-		quality: 2,
+		quality: 1,
 		qualities: ['10x50', '10x100', '25x100', '50x100', '75x100'],
 		dynamicQuality: true,
 		maxQuality: 4
