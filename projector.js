@@ -435,7 +435,7 @@ Projector.prototype.loadImage = function (index, callback) {
 		src = src.replace('%i', index);
 
 		// TESTING, REMOVE IN PROD
-		src = src + '?ord=' + Math.random().toString().substr(2); // Cachebuster, for debugging
+		// src = src + '?ord=' + Math.random().toString().substr(2); // Cachebuster, for debugging
 
 		item.src = src;
 
@@ -642,7 +642,7 @@ Projector.prototype.doLookAhead = function (frame) {
 
 	// Prepare background
 	var nextImage = this.getImage(index);
-	if(nextImage.status == 'ready') that.drawImage(nextImage.src, 0, that.getScreen(false));
+	if(nextImage && nextImage.status == 'ready') that.drawImage(nextImage.src, 0, that.getScreen(false));
 };
 
 /**
