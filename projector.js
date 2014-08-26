@@ -418,6 +418,8 @@ Projector.prototype.playAudio = function () {
  * @param  {Function} callback Callback when the image has loaded
  */
 Projector.prototype.loadImage = function (index, callback) {
+	// console.log('Load image', index);
+
 	var that = this;
 	var item = this.collection[index];
 
@@ -621,19 +623,26 @@ Projector.prototype.doPixelTracking = function (frame) {
 };
 
 /**
- * Make sure the next image set is always preloaded
+ * Make sure the next image sets are always preloaded
  * @param  {integer} frame The frame to calculate the current image from
  */
 Projector.prototype.doLookAhead = function (frame) {
 	var that = this;
 	var index = this.getIndex(frame) + 1;
-	var image = this.getImage(index);
 
-	if (image && image.status == 'pristine') {
-		this.loadImage(index, function () {
-			that.drawImage(image.src, 0, that.getScreen(false));
-		});
+	// Prep next set of images
+	for(var i = 0; i < 3; i++) {
+		var image = this.getImage(index + i);
+		
+		if(image && image.status == 'pristine') {
+			this.loadImage(index + i);
+			break;
+		}
 	}
+
+	// Prepare background
+	var nextImage = this.getImage(index);
+	if(nextImage.status == 'ready') that.drawImage(nextImage.src, 0, that.getScreen(false));
 };
 
 /**
