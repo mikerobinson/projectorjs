@@ -5,6 +5,7 @@
  */
 
 (function() {
+	var pauseTolerance = 0.5;
 	var didScroll = false;
 	var ads = document.querySelectorAll('.ad-tapad');
 
@@ -21,8 +22,8 @@
 				var ad = ads[i];
 
 				var rect = ad.getBoundingClientRect();
-				var bottom = (rect.height * 0.25);
-				var top = window.innerHeight - (rect.height * 0.25);
+				var bottom = (rect.height * pauseTolerance);
+				var top = window.innerHeight - (rect.height * pauseTolerance);
 
 				if (rect.bottom < bottom || rect.top > top) {
 					// Out of bounds

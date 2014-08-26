@@ -36,9 +36,9 @@ else
 	echo "50% quality..."
 	convert final/source-*.jpg -quality 50 final/50x100.jpg
 
+	echo "75% quality..."
+	convert final/source-*.jpg -quality 75 final/75x100.jpg
+
 	echo "100% quality..."
 	convert final/source-*.jpg final/100x100.jpg
-
-	echo "100% quality, half size..."
-	convert final/source-*.jpg -resize 50% final/100x50.jpg
 fi

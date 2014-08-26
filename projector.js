@@ -26,6 +26,7 @@ function Projector(el, options) {
 		started: false,
 		playing: true,
 		tickTimeout: null,
+		inFocus: true, 
 		frame: 0,
 		loadTimes: []
 	}
@@ -44,10 +45,10 @@ function Projector(el, options) {
 		lookAhead: 3,
 		movieUrl: '',
 		clickUrl: '',
-		clickToMovie: true,
-		quality: 0,
-		qualities: ['10x50', '10x100', '25x100', '50x100', '100x100'],
-		dynamicQuality: true
+		quality: 2,
+		qualities: ['10x50', '10x100', '25x100', '50x100', '75x100'],
+		dynamicQuality: true,
+		maxQuality: 4
 
 	}
 	this.settings = Projector.extend(options, this.settings);
@@ -217,9 +218,17 @@ Projector.prototype.bindEvents = function () {
 	}
 
 	// Window messages (for iframe communication)
-	addEventListener('message', function (e) {
+	window.addEventListener('message', function (e) {
 		that.handleMessage.call(that, e);
 	}, false);
+
+	window.addEventListener('focus', function (e) {
+		that.play.call(that);
+	});
+
+	window.addEventListener('blur', function (e) {
+		that.pause.call(that);
+	});
 };
 
 /**
@@ -335,7 +344,15 @@ Projector.prototype.handleMessage = function (event) {
  */
 Projector.prototype.handleClick = function (e) {
 	// Since the ad spawns a new tab, pause the playing movie
-	this.pause(true);
+	// this.pause(true);
+
+	if(!this.state.audio) {
+		e.preventDefault();
+		this.playAudio(true);
+	} else {
+		// The blur handler will take care of pausing the audio
+		// Do nothing	
+	}
 };
 
 /**
@@ -416,7 +433,7 @@ Projector.prototype.loadImage = function (index, callback) {
 		src = src.replace('%i', index);
 
 		// TESTING, REMOVE IN PROD
-		// src = src + '?ord=' + Math.random().toString().substr(2); // Cachebuster, for debugging
+		src = src + '?ord=' + Math.random().toString().substr(2); // Cachebuster, for debugging
 
 		item.src = src;
 
@@ -599,7 +616,6 @@ Projector.prototype.doPixelTracking = function (frame) {
 
 			var pixelImage = new Image();
 			pixelImage.src = this.settings.events[i].src;
-			// pixelImage.src = 'htt://www.example.com/image.gif'; // temp
 		}
 	}
 };
@@ -636,6 +652,7 @@ Projector.prototype.doQualityCheck = function () {
 	if (loadPercentage > 150 && this.state.quality > 0) this.state.quality--; // Really bad
 	if (loadPercentage > 200 && this.state.quality > 0) this.state.quality--; // Atrocious
 
+	if(this.state.quality > this.settings.maxQuality) this.state.quality = this.settings.maxQuality;
 
 	// console.log('Quality', this.settings.qualities[this.state.quality]);
 };
