@@ -45,10 +45,15 @@ function Projector(el, options) {
 		lookAhead: 3,
 		movieUrl: '',
 		clickUrl: '',
-		quality: 1,
+		quality: 4,
 		qualities: ['10x50', '10x100', '25x100', '50x100', '75x100'],
 		dynamicQuality: true,
-		maxQuality: 4
+		maxQuality: 4,
+		social: {
+			facebook: '',
+			youtube: '',
+			twitter: ''
+		}
 
 	}
 	this.settings = Projector.extend(options, this.settings);
@@ -146,6 +151,14 @@ Projector.prototype.make = function () {
 			var bar = this.elements.equalizer.appendChild(div.cloneNode(true));
 			bar.className = 'bar';
 		}
+
+		// Create the full screen element
+		if(this.settings.movieUrl) {
+			this.elements.fullscreen = this.elements.container.appendChild(control.cloneNode(true));
+			this.elements.fullscreen.className = 'fullscreen';
+			this.elements.fullscreen.target = "_blank";
+			this.elements.fullscreen.href = this.settings.movieUrl;
+		}
 	}
 
 
@@ -178,6 +191,24 @@ Projector.prototype.make = function () {
 	this.elements.audio.muted = this.state.muted;
 	this.elements.audio.src = this.settings.audioUrl;
 	this.elements.audio.preload = true;
+
+	// Create social elements
+	var socialLink = document.createElement('a');
+	this.elements.socials = this.elements.container.appendChild(document.createElement('div'));
+	this.elements.socials.className = 'socials';
+
+	socialLink.target = '_blank';
+	if(this.settings.social.youtube) {
+		this.elements.youtube = this.elements.socials.appendChild(socialLink.cloneNode(true));
+		this.elements.youtube.className = 'social youtube';
+		this.elements.youtube.href = this.settings.social.youtube;
+	}
+
+	if(this.settings.social.facebook) {
+		this.elements.facebook = this.elements.socials.appendChild(socialLink.cloneNode(true));
+		this.elements.facebook.className = 'social facebook';
+		this.elements.facebook.href = this.settings.social.facebook;
+	}
 
 };
 
@@ -393,10 +424,11 @@ Projector.prototype.playRealMovie = function () {
 Projector.prototype.playAudio = function () {
 	var that = this;
 
-	if(this.elements.audio.readyState == 4) {
-		// Play sound
-		this.elements.audio.play();
+	// Play sound
+	this.elements.audio.play();
 
+
+	if(this.elements.audio.readyState == 4) {
 		// Force synch audio
 		this.synchAudio(this.state.frame, true); 
 

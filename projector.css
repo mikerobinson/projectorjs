@@ -8,7 +8,8 @@ body, html {
 .pause,
 .play,
 .mute,
-.bars {
+.bars,
+.fullscreen {
     position: absolute;
     left: 0;
     bottom: 0;
@@ -21,7 +22,8 @@ body, html {
 .pause:hover,
 .play:hover,
 .mute:hover,
-.bars:hover {
+.bars:hover,
+.fullscreen:hover {
     cursor: pointer;
 }
 
@@ -61,6 +63,14 @@ body, html {
     background: url(images/mute-on.png) left top no-repeat;
 }
 
+.fullscreen {
+    background: url(images/fullscreen.png) left top no-repeat;
+    right: 0;
+    top: 0;
+    bottom: auto;
+    left: auto;
+}
+
 .loading {
     position: absolute;
     bottom: 5px;
@@ -70,6 +80,33 @@ body, html {
     width: 38px;
     height: 38px;
     background: url(images/spin.png) left top no-repeat;
+}
+
+.socials {
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    display: inline-block;
+    z-index: 10;
+}
+
+.social {
+    background-size: 25px;
+    background-repeat: no-repeat;
+    background-position: center center;
+    display: block;
+    float: right;
+    opacity: 0.5;
+    width: 38px;
+    height: 38px;
+}
+
+.social.youtube {
+    background-image: url(images/youtube.png);
+}
+
+.social.facebook {
+    background-image: url(images/facebook.png);
 }
 
 .bars {
