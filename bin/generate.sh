@@ -10,6 +10,9 @@ else
 	echo $3
 	mkdir -p $3/{frames,final,audio}
 	
+	echo "Converting movie to iPhone friendly MP4..."
+	ffmpeg -i $1 -loglevel panic -c:v libx264 -crf 28 -preset veryslow -tune fastdecode -profile:v baseline -level 3.0 -movflags +faststart -c:a libfdk_aac -ac 2 -ar 44100 -ab 64k -threads 0 -f mp4 -s $4 $1$4.mp4
+
 	echo "Converting movie to images..."
 	ffmpeg -i $1 -r $2 -s $4 -qscale:v 1 -f image2 $3/frames/frame-%04d.jpg -loglevel panic
 

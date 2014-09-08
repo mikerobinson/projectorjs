@@ -377,7 +377,7 @@ Projector.prototype.handleClick = function (e) {
 	// Since the ad spawns a new tab, pause the playing movie
 	// this.pause(true);
 
-	if(!this.state.audio) {
+	if(!this.state.audio && !Projector.isMobileSafari()) {
 		e.preventDefault();
 		this.playAudio(true);
 	} else {
@@ -812,3 +812,12 @@ Projector.toggleClass = function (element, className, on) {
 		Projector.removeClass(element, className);
 	}
 }
+
+/**
+ * Detect mobile safari, which does not allow media elements to play in site
+ * @return {Boolean}
+ */
+Projector.isMobileSafari = function() {
+	var iOS = /(iPhone|iPod)/g.test( navigator.userAgent );
+	return iOS;
+};
