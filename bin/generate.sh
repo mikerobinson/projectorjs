@@ -4,23 +4,25 @@ set -o errexit
 
 if [ $# -lt 5 ]
 then 
-	echo "Usage: bin/generate.sh mustang.mp4 24 frames/mustang 640x360 8x6"
+	echo "Usage: bin/generate.sh mustang.mp4 24 mustang 640x360 8x6"
 else
 	echo "Preparing target directory..."
-	echo $3
-	mkdir -p $3/{frames,final,audio}
+	echo frames/$3$4
+	mkdir -p frames/$3$4/{frames,final,audio,video}
 	
 	echo "Converting movie to iPhone friendly MP4..."
-	ffmpeg -i $1 -loglevel panic -c:v libx264 -crf 28 -preset veryslow -tune fastdecode -profile:v baseline -level 3.0 -movflags +faststart -c:a libfdk_aac -ac 2 -ar 44100 -ab 64k -threads 0 -f mp4 -s $4 $1$4.mp4
+	#ffmpeg -i $1 -loglevel panic -c:v libx264 -crf 28 -preset veryslow -tune fastdecode -profile:v baseline -level 3.0 -movflags +faststart -c:a libfdk_aac -ac 2 -ar 44100 -ab 64k -threads 0 -f mp4 -s $4 $1$4.mp4
+	#ffmpeg -i mustang.mp4 -loglevel panic -c:v libx264 -crf 28 -preset veryslow -tune fastdecode -profile:v baseline -level 3.0 -movflags +faststart -c:a libfdk_aac -ac 2 -ar 44100 -ab 64k -threads 0 -f mp4 -s 320x180 mustang320x180.mp4
+	ffmpeg -i $1 -s $4 frames/$3$4/video/$3$4.mp4
 
 	echo "Converting movie to images..."
-	ffmpeg -i $1 -r $2 -s $4 -qscale:v 1 -f image2 $3/frames/frame-%04d.jpg -loglevel panic
+	ffmpeg -i $1 -r $2 -s $4 -qscale:v 1 -f image2 frames/$3$4/frames/frame-%04d.jpg -loglevel panic
 
 	echo "Converting movie to audio..."
-	ffmpeg -i $1 -ab 96k -ac 2 -ar 44100 -vn $3/audio/96-44.mp3 -loglevel panic
-	ffmpeg -i $1 -ab 48k -ac 2 -ar 44100 -vn $3/audio/48-44.mp3 -loglevel panic
+	ffmpeg -i $1 -ab 96k -ac 2 -ar 44100 -vn frames/$3$4/audio/96-44.mp3 -loglevel panic
+	ffmpeg -i $1 -ab 48k -ac 2 -ar 44100 -vn frames/$3$4/audio/48-44.mp3 -loglevel panic
 
-	cd $3
+	cd frames/$3$4
 
 	echo "Creating montages..."
 	montage frames/frame-*.jpg -geometry $4+0+0 -tile $5 final/source-%04d.jpg

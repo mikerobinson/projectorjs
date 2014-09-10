@@ -375,14 +375,20 @@ Projector.prototype.handleMessage = function (event) {
  */
 Projector.prototype.handleClick = function (e) {
 	// Since the ad spawns a new tab, pause the playing movie
-	// this.pause(true);
-
-	if(!this.state.audio && !Projector.isMobileSafari()) {
+	this.pause(true);
+	
+	if(Projector.isMobileSafari()) {
+		// iOS doesn't properly support media elements, just flip to the movie
 		e.preventDefault();
-		this.playAudio(true);
+		this.playRealMovie();
 	} else {
-		// The blur handler will take care of pausing the audio
-		// Do nothing	
+		if(!this.state.audio) {
+			e.preventDefault();
+			this.playAudio(true);
+		} else {
+			// The blur handler will take care of pausing the audio
+			// Do nothing	
+		}
 	}
 };
 
@@ -402,20 +408,22 @@ Projector.prototype.handleEqualizerClick = function(e) {
 Projector.prototype.playRealMovie = function () {
 	var that = this;
 
-	clearTimeout(this.state.tickTimeout); // Stop looping image
+	if(Projector.isMobileSafari()) {
+		window.open(this.settings.movieUrl);
+	} else {
+		// Hide looping images
+		this.elements.image1.style.display = 'none';
+		this.elements.image2.style.display = 'none';
 
-	// Hide looping images
-	this.elements.image1.style.display = 'none';
-	this.elements.image2.style.display = 'none';
+		// Enable mute button
+		this.elements.mute.style.display = 'block';
 
-	// Enable mute button
-	this.elements.mute.style.display = 'block';
+		// Play real movie
+		this.elements.movie.style.zIndex = 1;
+		this.elements.movie.play();
 
-	// Play real movie
-	this.elements.movie.style.zIndex = 1;
-	this.elements.movie.play();
-
-	this.state.movie = true;
+		this.state.movie = true;	
+	}
 };
 
 /**
@@ -496,7 +504,9 @@ Projector.prototype.loadImage = function (index, callback) {
  * @param  {object} targetElement The elemen to render the image on
  */
 Projector.prototype.drawImage = function (image, frame, targetElement) {
-	targetElement.style.backgroundImage = 'url(' + image + ')';
+	if(targetElement.style.backgroundImage.indexOf(image) < 0) {
+		targetElement.style.backgroundImage = 'url(' + image + ')';
+	}
 
 	var localFrame = frame % this.state.framesPerSlide; // frame on current image
 	var row = Math.floor(localFrame / this.settings.columns);
@@ -818,6 +828,6 @@ Projector.toggleClass = function (element, className, on) {
  * @return {Boolean}
  */
 Projector.isMobileSafari = function() {
-	var iOS = /(iPhone|iPod)/g.test( navigator.userAgent );
+	var iOS = /(iPhone|iPod|iPad)/g.test( navigator.userAgent );
 	return iOS;
 };
