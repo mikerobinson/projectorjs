@@ -25,6 +25,8 @@ function Projector(el, options) {
 		quality: 0,
 		started: false,
 		playing: true,
+		movieStatus: 'buffering', // buffering, ready
+		controlStatus: 'autoplay', // autoplay, autopause, playing, paused
 		tickTimeout: null,
 		inFocus: true, 
 		frame: 0,
@@ -45,8 +47,8 @@ function Projector(el, options) {
 		lookAhead: 3,
 		movieUrl: '',
 		clickUrl: '',
-		quality: 4,
-		qualities: ['10x50', '10x100', '25x100', '50x100', '75x100'],
+		quality: 3,
+		qualities: ['10x100', '25x100', '50x100', '75x100'],
 		dynamicQuality: true,
 		maxQuality: 4,
 		social: {
@@ -112,14 +114,15 @@ Projector.prototype.make = function () {
 	div.style.height = this.settings.height + 'px';
 	div.style.width = this.settings.width + 'px';
 
+	// this.elements.image = this.elements.container.appendChild(div.cloneNode());
+	// this.elements.image.style.display = 'block';
+	// this.elements.image.className = 'image1';
 
-	this.elements.image1 = this.elements.container.appendChild(div.cloneNode());
-	this.elements.image2 = this.elements.container.appendChild(div.cloneNode());
+	this.elements.canvas = this.elements.container.appendChild(document.createElement('canvas'));
+	this.elements.canvas.style.height = this.settings.height + 'px';
+	this.elements.canvas.style.width = this.settings.width + 'px';
+	this.elements.canvas.className = 'canvas';
 
-	this.elements.image1.style.display = 'block';
-	this.elements.image2.style.display = 'none';
-
-	this.elements.image1.active = true;
 
 	// Loading spinner
 	var loading = document.createElement('div');
@@ -275,8 +278,12 @@ Projector.prototype.play = function (unlock) {
 			this.startMovie();
 		} else {
 			this.state.playing = true;
+
 			Projector.addClass(this.elements.container, 'playing');
 			Projector.removeClass(this.elements.container, 'paused');
+
+			// Resume 
+			this.tick(this.state.frame);
 
 			// Play movie
 			if (this.state.movie) this.elements.movie.play();
@@ -292,11 +299,16 @@ Projector.prototype.play = function (unlock) {
  */
 Projector.prototype.pause = function (lock) {
 	this.state.playing = false;
+
+	this.state.controlStatus = (lock) ? 'paused' : 'autopause';
 	
 	if(lock) this.state.locked = true; // User pause, cannot override unless user hits play
 	
 	Projector.addClass(this.elements.container, 'paused');
 	Projector.removeClass(this.elements.container, 'playing');
+
+	// Stop loop
+	clearTimeout(this.state.tickTimeout);
 
 	// Pause movie
 	if (this.state.movie) this.elements.movie.pause();
@@ -341,6 +353,8 @@ Projector.prototype.startMovie = function () {
 	var that = this;
 
 	this.state.started = true;
+	this.state.frame = 0;
+	this.showLoading();
 	this.state.loadTimes = [];
 
 	if (this.state.tickTimeout) clearTimeout(this.state.tickTimeout);
@@ -351,7 +365,7 @@ Projector.prototype.startMovie = function () {
 
 	this.loadImage(0, function () {
 		that.play.call(that);
-		that.tick.call(that);
+		// that.tick.call(that);
 	});
 };
 
@@ -375,8 +389,6 @@ Projector.prototype.handleMessage = function (event) {
  */
 Projector.prototype.handleClick = function (e) {
 	// Since the ad spawns a new tab, pause the playing movie
-	this.pause(true);
-	
 	if(Projector.isMobileSafari()) {
 		// iOS doesn't properly support media elements, just flip to the movie
 		e.preventDefault();
@@ -385,9 +397,6 @@ Projector.prototype.handleClick = function (e) {
 		if(!this.state.audio) {
 			e.preventDefault();
 			this.playAudio(true);
-		} else {
-			// The blur handler will take care of pausing the audio
-			// Do nothing	
 		}
 	}
 };
@@ -399,7 +408,12 @@ Projector.prototype.handleClick = function (e) {
 Projector.prototype.handleEqualizerClick = function(e) {
 	e.preventDefault();
 
-	this.playAudio();	
+	if(Projector.isMobileSafari()) {
+		// iOS doesn't properly support media elements, just flip to the movie
+		this.playRealMovie();
+	} else {
+		this.playAudio();		
+	}
 };
 
 /**
@@ -475,7 +489,7 @@ Projector.prototype.loadImage = function (index, callback) {
 		src = src.replace('%i', index);
 
 		// TESTING, REMOVE IN PROD
-		// src = src + '?ord=' + Math.random().toString().substr(2); // Cachebuster, for debugging
+		src = src + '?ord=' + Math.random().toString().substr(2); // Cachebuster, for debugging
 
 		item.src = src;
 
@@ -490,10 +504,16 @@ Projector.prototype.loadImage = function (index, callback) {
 			// Perform load time calculations
 			that.state.loadTimes.push(new Date().valueOf() - loadTime); // Finish measuring image load time
 
+			// console.log('Image ' + index + ' loaded', 'Current index: ' + that.getIndex(that.state.frame || 0), item.src, callback);
+
 			// Move on
 			item.status = 'ready';
+			item.image = image;
+
 			if (callback) callback();
 		}
+	} else if (item && item.status == 'ready') {
+		if (callback) callback();
 	}
 };
 
@@ -501,18 +521,27 @@ Projector.prototype.loadImage = function (index, callback) {
  * Render an image to an element
  * @param  {string} image         The image source
  * @param  {integer} frame         The frame of the image to render
- * @param  {object} targetElement The elemen to render the image on
  */
-Projector.prototype.drawImage = function (image, frame, targetElement) {
-	if(targetElement.style.backgroundImage.indexOf(image) < 0) {
-		targetElement.style.backgroundImage = 'url(' + image + ')';
-	}
-
+Projector.prototype.drawImage = function (image, frame) {
 	var localFrame = frame % this.state.framesPerSlide; // frame on current image
 	var row = Math.floor(localFrame / this.settings.columns);
 	var column = localFrame % this.settings.columns;
 
-	targetElement.style.backgroundPosition = '-' + (column * this.settings.width) + 'px -' + (row * this.settings.height) + 'px';
+	var ctx = this.elements.canvas.getContext('2d');
+	var index = this.getIndex(frame);
+	var image = this.getImage(index);
+
+	ctx.drawImage(
+		image.image, 					// Image
+		(column * this.settings.width), // sx 		The x coordinate where to start clipping
+		(row * this.settings.height), 	// sy 		The y coordinate where to start clipping
+		this.settings.width, 			// swidth 	The width of the clipped image
+		this.settings.height,			// sheight	The height of the clipped image
+		0,								// x		The x coordinate where to place the image on the canvas
+		0,								// y 		The y coordinate where to place the image on the canva
+		this.settings.width,			// width
+		this.settings.height			// height
+	);
 };
 
 /**
@@ -521,7 +550,8 @@ Projector.prototype.drawImage = function (image, frame, targetElement) {
  * @return {object}           The active or inactive element
  */
 Projector.prototype.getScreen = function (isActive) {
-	return this.elements.image1.active == isActive ? this.elements.image1 : this.elements.image2;
+	// return this.elements.image;
+	return this.elements.canvas;
 };
 
 /**
@@ -572,79 +602,81 @@ Projector.prototype.getLoadTimePercentage = function () {
 	return percent;
 };
 
-
 /**
- * Hide the current image and render the backup.
- * I use two images because hiding and showing an element is more performant than swapping out images on the same element
- */
-Projector.prototype.flipActiveImage = function () {
-	var oneActive = this.elements.image1.active; // local variable, since we're about to change this.elements.image1.active
-
-	this.elements.image1.active = !(oneActive);
-	this.elements.image1.style.display = oneActive ? 'none' : 'block';
-
-	this.elements.image2.active = oneActive;
-	this.elements.image2.style.display = oneActive ? 'block' : 'none';
-};
-
-/**
- * Move the video forward or backward by a frame amount
+ * Perform a tick operation. Check the status of things to see what should move where.
  * @param  {integer} frame The frame to move to
  */
 Projector.prototype.tick = function (frame) {
+	frame = frame || 0;
+	var that = this;
+
+	// console.log('tick', frame);
+
 	// Loop
 	if (this.settings.loop && frame > this.settings.totalFrames) {
-		this.startMovie();
-	} else {
-		var that = this;
-		this.state.tickTimeout = setTimeout(function () {
-			if (that.state.playing) {
-				frame = frame || 0;
-
-				var image = that.getImage(that.getIndex(frame));
-
-				if (image && image.status == 'ready') {
-					// Check for image flip
-					if (frame % that.state.framesPerSlide == 0 && that.state.playing) that.flipActiveImage();
-
-					// Toggle loading spinner
-					that.hideLoading.call(that);
-
-					// Move the image
-					that.drawImage(image.src, frame, that.getScreen(true));
-
-					// Track the completion rate
-					that.doPixelTracking(frame);
-
-					// Preload next image
-					that.doLookAhead(frame);
-
-					// Check the audio
-					if (that.state.audio && that.elements.audio.paused) that.elements.audio.play();
-
-					// Synch the audio
-					if (that.state.audio && frame % that.settings.frameRate == 0) {
-						that.synchAudio.call(that, frame, false);
-					}
-
-					// Keep track of current frame
-					that.state.frame = frame;
-					frame++;
-				} else {
-					if (that.state.audio && !that.elements.audio.paused) that.elements.audio.pause();
-
-					that.showLoading.call(that);
-				}
-
-				that.tick(frame);
-			} else {
-				if (that.state.audio && !that.elements.audio.paused) that.elements.audio.pause();
-				that.showLoading.call(that);
-				that.tick(frame);
-			}
-		}, 1000 / this.settings.frameRate);
+		console.log('loop');
+		return this.startMovie();
 	}
+
+	// Handle buffering & ready
+	this.state.tickTimeout = setTimeout(function () {
+		// Determine movie status
+		var index = that.getIndex.call(that, frame);
+		var image = that.getImage.call(that, index);
+
+		switch(image.status) {
+			case 'ready':
+				that.hideLoading.call(that);
+				if (that.state.audio && that.elements.audio.paused) that.elements.audio.play();
+				that.renderFrame.call(that, frame);
+				frame++;
+
+				that.tick.call(that, frame);
+				break;
+			case 'pristine':
+			case 'loading':
+				that.showLoading.call(that);
+				if (that.state.audio && !that.elements.audio.paused) that.elements.audio.pause();
+
+				that.tick.call(that, frame);
+				break;
+		}
+	}, 1000 / this.settings.frameRate);
 }
+
+/**
+ * Render a specific frame in the movie
+ * @param  {integer} frame
+ */
+Projector.prototype.renderFrame = function(frame) {
+	// console.log(frame, Math.random() * 10);
+
+	// Check for image flip
+	// if (frame % this.state.framesPerSlide == 0 && this.state.playing) this.flipActiveImage();
+
+	// Get the image
+	var image = this.getImage(this.getIndex(frame));
+
+	// Move the image
+	this.drawImage(image.src, frame);
+
+	// Track the completion rate
+	this.doPixelTracking(frame);
+
+	// Preload next image
+	this.doLookAhead(frame);
+
+	// Check the audio
+	if (this.state.audio && this.elements.audio.paused) this.elements.audio.play();
+
+	// Synch the audio
+	if (this.state.audio && frame % this.settings.frameRate == 0) {
+		this.synchAudio(frame, false);
+	}
+
+	// Keep track of current frame
+	this.state.frame = frame;
+};
 
 /**
  * Handle pixel tracking events for video completions
@@ -681,10 +713,6 @@ Projector.prototype.doLookAhead = function (frame) {
 			break;
 		}
 	}
-
-	// Prepare background
-	var nextImage = this.getImage(index);
-	if(nextImage && nextImage.status == 'ready') that.drawImage(nextImage.src, 0, that.getScreen(false));
 };
 
 /**
@@ -738,9 +766,11 @@ Projector.prototype.synchAudio = function (frame, force) {
  */
 Projector.prototype.showLoading = function () {
 	if (this.state.loadingInterval) return; // Don't allow more than one
-
+	
 	var that = this;
 	var counter = 0;
+
+	this.elements.loading.style.display = 'block';
 
 	this.state.loadingInterval = setInterval(function () {
 		var frames = 19;
@@ -750,8 +780,6 @@ Projector.prototype.showLoading = function () {
 		counter++;
 		if (counter >= frames) counter = 0;
 	}, 50);
-
-	this.elements.loading.style.display = 'block';
 };
 
 /**
@@ -761,6 +789,7 @@ Projector.prototype.hideLoading = function () {
 	if (!this.state.loadingInterval) return;
 
 	clearInterval(this.state.loadingInterval);
+	this.state.loadingInterval = null; // clearInterval doesn't make the value falsy, so we force it
 	this.elements.loading.style.display = 'none';
 };
 

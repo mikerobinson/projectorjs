@@ -29,8 +29,8 @@ else
 
 	echo "Compressing montages..."
 
-	echo "10% quality, half size..."
-	convert final/source-*.jpg -quality 10 -resize 50% final/10x50.jpg
+	#echo "10% quality, half size..."
+	#convert final/source-*.jpg -quality 10 -resize 50% final/10x50.jpg
 
 	echo "10% quality..."
 	convert final/source-*.jpg -quality 10 final/10x100.jpg
