@@ -3,13 +3,13 @@
     <head>
         <meta charset="utf-8">
         <meta name="description" content="">
-        <meta name="viewport" content="width=320, initial-scale=1">
-        <title>Untitled</title>
+        <meta name="viewport" content="width=960, initial-scale=1">
+        <title>Mustang</title>
         <link rel="author" href="humans.txt">
         <link rel="stylesheet" href="projector.css">
     </head>
     <body>
-    	<div class="ad"></div>
+        <div class="ad"></div>
 
         <script src="projector.js"></script>
         <script>
@@ -22,11 +22,11 @@
                 totalFrames: 1513,
                 width: 960,
                 height: 540,
-                imageFiles: 'frames/mustang/final/%q-%i.jpg',
-                clickUrl: 'http://www.ford.com/cars/mustang',
-                movieUrl: 'videos/mustang.mp4',
-                audioUrl: 'frames/mustang/audio/96-44.mp3',
-                eventSrc: 'http://www.tapad.com/pixel.gif?mark=:mark',
+                imageFiles: 'frames/mustang960x540/final/%q-%i.jpg',
+                movieUrl:   'frames/mustang960x540/video/mustang960x540.mp4',
+                audioUrl:   'frames/mustang960x540/audio/96-44.mp3',
+                clickUrl:   'http://www.ford.com/cars/mustang',
+                eventSrc:   'http://www.tapad.com/pixel.gif?mark=:mark',
                 events: [
                 {
                     mark: 1,
@@ -38,7 +38,11 @@
                 }, {
                     mark: 50,
                     name: '50'
-                }]
+                }],
+                social: {
+                    facebook: 'https://www.facebook.com/fordmustang',
+                    youtube: 'https://www.youtube.com/user/FordMustang'
+                }
             });
 
             projector.init();

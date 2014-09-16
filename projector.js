@@ -6,12 +6,11 @@
 
 function Projector(el, options) {
 	this.elements = {
-		container: el,
-		image1: null,
-		image2: null,
+		el: el,
+		container: null,
+		canvas: null,
 		loading: null,
 		link: null,
-		movie: null,
 		rewind: null,
 		pause: null,
 		play: null
@@ -25,10 +24,7 @@ function Projector(el, options) {
 		quality: 0,
 		started: false,
 		playing: true,
-		movieStatus: 'buffering', // buffering, ready
-		controlStatus: 'autoplay', // autoplay, autopause, playing, paused
 		tickTimeout: null,
-		inFocus: true, 
 		frame: 0,
 		loadTimes: []
 	}
@@ -47,15 +43,14 @@ function Projector(el, options) {
 		lookAhead: 3,
 		movieUrl: '',
 		clickUrl: '',
+		clickThroughUrl: '',
+
 		quality: 3,
 		qualities: ['10x100', '25x100', '50x100', '75x100'],
 		dynamicQuality: true,
 		maxQuality: 4,
-		social: {
-			facebook: '',
-			youtube: '',
-			twitter: ''
-		}
+		facebookUrl: '',
+		youtubeUrl: ''
 
 	}
 	this.settings = Projector.extend(options, this.settings);
@@ -70,9 +65,21 @@ function Projector(el, options) {
  * Start the video
  */
 Projector.prototype.init = function () {
+	this.checkIframeSettings();
 	this.make();
 	this.bindEvents();
 	if (this.settings.autoplay) this.startMovie();
+};
+
+/**
+ * Checks for parameters passed in iFrame url and overwrites settings if they exist
+ */
+Projector.prototype.checkIframeSettings = function() {
+	var clickUrl = Projector.getParam('clickUrl');
+	var clickThroughUrl = Projector.getParam('clickThroughUrl');
+
+	if(clickUrl) this.settings.clickUrl = clickUrl; 
+	if(clickThroughUrl) this.settings.clickThroughUrl = clickThroughUrl;
 };
 
 /**
@@ -83,10 +90,6 @@ Projector.prototype.make = function () {
 	this.state.framesPerSlide = this.settings.columns * this.settings.rows;
 	this.state.timePerSlide = ((this.settings.columns * this.settings.rows) / this.settings.frameRate) * 1000; // milliseconds
 	this.state.totalImages = Math.ceil(this.settings.totalFrames / this.state.framesPerSlide);
-
-	// console.table({
-	// 	state: this.state
-	// });
 
 	// Transfer quality settings to state because it may be variable instead of fixed
 	this.state.quality = this.settings.quality;
@@ -99,94 +102,45 @@ Projector.prototype.make = function () {
 	}
 
 	// Init stage styles
-	this.elements.container.style.height = this.settings.height + 'px';
-	this.elements.container.style.width = this.settings.width + 'px';
-	this.elements.container.style.overflow = 'hidden';
-	this.elements.container.style.position = 'relative';
-	this.elements.container.style.backgroundRepeat = 'no-repeat';
+	var html = [
+		'<div class="container" style="width: {width}px; height: {height}px;">',
+			'<canvas class="canvas" width="{width}" height="{height}" style="width: {width}px; height: {height}px;"></canvas>',
+			'<a href="{clickThroughUrl}" target="_blank" class="link"></a>',
+			'<div class="loading"></div>',
+			'<div class="controls">',
+				'<a class="rewind"></a>',
+				'<a class="pause"></a>',
+				'<a class="play"></a>',
+				'<a class="mute mute-off"></a>',
+				'<div class="equalizer">',
+					'<div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>',
+				'</div>',
+				'<a href="{movieUrl}" class="fullscreen" target="_blank"></a>',
+			'</div>',
+			'<div class="socials">',
+				'<a href="{youtubeUrl}" class="social youtube" target="_blank"></a>',
+				'<a href="{facebookUrl}" class="social facebook" target="_blank"></a>',
+			'</div>',
+		'</div>'
+	]
 
-	// Init top and bottom layer elements
-	var div = document.createElement('div');
-	div.style.backgroundRepeat = 'no-repeat';
-	div.style.backgroundPosition = '0 0';
-	div.style.backgroundSize = (this.settings.columns * this.settings.width) + 'px ' + (this.settings.rows * this.settings.height) + 'px';
-	div.style.position = 'relative';
-	div.style.height = this.settings.height + 'px';
-	div.style.width = this.settings.width + 'px';
+	html = html.join('');
 
-	// this.elements.image = this.elements.container.appendChild(div.cloneNode());
-	// this.elements.image.style.display = 'block';
-	// this.elements.image.className = 'image1';
-
-	this.elements.canvas = this.elements.container.appendChild(document.createElement('canvas'));
-	this.elements.canvas.style.height = this.settings.height + 'px';
-	this.elements.canvas.style.width = this.settings.width + 'px';
-	this.elements.canvas.className = 'canvas';
-
-
-	// Loading spinner
-	var loading = document.createElement('div');
-	loading.className = 'loading';
-	this.elements.loading = this.elements.container.appendChild(loading);
-
-	// Init controls
-	if (this.settings.controls) {
-		var control = document.createElement('a');
-
-		this.elements.rewind = this.elements.container.appendChild(control.cloneNode(true))
-		this.elements.rewind.className = 'rewind';
-
-		this.elements.pause = this.elements.container.appendChild(control.cloneNode(true))
-		this.elements.pause.className = 'pause';
-
-		this.elements.play = this.elements.container.appendChild(control.cloneNode(true))
-		this.elements.play.className = 'play';
-
-		this.elements.mute = this.elements.container.appendChild(control.cloneNode(true));
-		this.elements.mute.className = 'mute mute-off';
-		this.elements.mute.style.display = 'none';
-
-		var div = document.createElement('div');
-		this.elements.equalizer = this.elements.container.appendChild(div.cloneNode(true));
-
-		this.elements.equalizer.className = 'bars';
-		for(var i = 0; i < 10; i++) {
-			var bar = this.elements.equalizer.appendChild(div.cloneNode(true));
-			bar.className = 'bar';
-		}
-
-		// Create the full screen element
-		if(this.settings.movieUrl) {
-			this.elements.fullscreen = this.elements.container.appendChild(control.cloneNode(true));
-			this.elements.fullscreen.className = 'fullscreen';
-			this.elements.fullscreen.target = "_blank";
-			this.elements.fullscreen.href = this.settings.movieUrl;
-		}
+	// Iterate through template and replace the markers with settings values
+	var markers = ['width', 'height', 'clickThroughUrl', 'movieUrl', 'youtubeUrl', 'facebookUrl'];
+	for(var i = 0; i < markers.length; i++) {
+		var re = new RegExp('{' + markers[i] + '}', 'g');
+		html = html.replace(re, this.settings[markers[i]]);
 	}
+		
+	// Append markup
+	this.elements.el.innerHTML = html;
 
-
-	// Init click through link
-	// Rendered on top of everything except video controls
-	var link = document.createElement('a');
-	link.href = (this.settings.clickUrl) ? this.settings.clickUrl : '#';
-	link.target = '_blank';
-	link.className = 'link';
-	link.style.cssText = 'position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 9';
-	this.elements.link = this.elements.container.appendChild(link);
-
-	// Render the real video element
-	if (this.settings.movieUrl) {
-		var video = document.createElement('video');
-		video.autoplay = false;
-		video.preload = false;
-		// video.src = this.settings.movieUrl;
-		video.style.width = this.settings.width + 'px';
-		video.style.height = this.settings.height + 'px';
-		video.style.zIndex = -1;
-		video.controls = false; // override video controls with javascript ones
-		this.elements.container.appendChild(video);
-
-		// this.elements.movie.src = this.settings.movieUrl; // Set src afer append or else it loads twice
+	// Convience lookups
+	var elements = ['canvas', 'container', 'equalizer', 'loading', 'link', 'mute', 'movie', 'rewind', 'pause', 'play'];
+	for(var i = 0; i < elements.length; i++) {
+		var element = elements[i];
+		this.elements[element] = this.elements.el.querySelector('.' + element);
 	}
 
 	// Create the audio element
@@ -194,25 +148,6 @@ Projector.prototype.make = function () {
 	this.elements.audio.muted = this.state.muted;
 	this.elements.audio.src = this.settings.audioUrl;
 	this.elements.audio.preload = true;
-
-	// Create social elements
-	var socialLink = document.createElement('a');
-	this.elements.socials = this.elements.container.appendChild(document.createElement('div'));
-	this.elements.socials.className = 'socials';
-
-	socialLink.target = '_blank';
-	if(this.settings.social.youtube) {
-		this.elements.youtube = this.elements.socials.appendChild(socialLink.cloneNode(true));
-		this.elements.youtube.className = 'social youtube';
-		this.elements.youtube.href = this.settings.social.youtube;
-	}
-
-	if(this.settings.social.facebook) {
-		this.elements.facebook = this.elements.socials.appendChild(socialLink.cloneNode(true));
-		this.elements.facebook.className = 'social facebook';
-		this.elements.facebook.href = this.settings.social.facebook;
-	}
-
 };
 
 /**
@@ -285,9 +220,6 @@ Projector.prototype.play = function (unlock) {
 			// Resume 
 			this.tick(this.state.frame);
 
-			// Play movie
-			if (this.state.movie) this.elements.movie.play();
-
 			// Play audio
 			if (this.state.audio) this.elements.audio.play();
 		}	
@@ -300,8 +232,6 @@ Projector.prototype.play = function (unlock) {
 Projector.prototype.pause = function (lock) {
 	this.state.playing = false;
 
-	this.state.controlStatus = (lock) ? 'paused' : 'autopause';
-	
 	if(lock) this.state.locked = true; // User pause, cannot override unless user hits play
 	
 	Projector.addClass(this.elements.container, 'paused');
@@ -309,9 +239,6 @@ Projector.prototype.pause = function (lock) {
 
 	// Stop loop
 	clearTimeout(this.state.tickTimeout);
-
-	// Pause movie
-	if (this.state.movie) this.elements.movie.pause();
 
 	// Pause audio
 	if (this.state.audio) this.elements.audio.pause();
@@ -336,9 +263,7 @@ Projector.prototype.mute = function () {
 	this.state.muted = !this.state.muted;
 
 	if (this.state.movie || this.state.audio) {
-		// this.elements.movie.muted = this.state.muted;
 		this.elements.audio.muted = this.state.muted;
-
 		this.elements.mute.style.backgroundImage = (this.state.muted) ? 'url(images/mute-on.png)' : 'url(images/mute-off.png)';
 
 		Projector.toggleClass(this.elements.mute, 'mute-on', this.state.muted);
@@ -385,20 +310,24 @@ Projector.prototype.handleMessage = function (event) {
 
 /**
  * Handle user interaction with base container, typically for the clickthrough
- * Currently handles playing the real movie on click instead of clicking through
  */
 Projector.prototype.handleClick = function (e) {
-	// Since the ad spawns a new tab, pause the playing movie
-	if(Projector.isMobileSafari()) {
-		// iOS doesn't properly support media elements, just flip to the movie
-		e.preventDefault();
-		this.playRealMovie();
-	} else {
-		if(!this.state.audio) {
-			e.preventDefault();
-			this.playAudio(true);
-		}
+	if(this.settings.clickUrl) {
+		var image = new Image();
+		image.src = this.settings.clickUrl;
 	}
+
+	// Since the ad spawns a new tab, pause the playing movie
+	// if(Projector.isMobileSafari()) {
+	// 	// iOS doesn't properly support media elements, just flip to the movie
+	// 	e.preventDefault();
+	// 	this.playRealMovie();
+	// } else {
+	// 	if(!this.state.audio) {
+	// 		e.preventDefault();
+	// 		this.playAudio(true);
+	// 	}
+	// }
 };
 
 /**
@@ -412,7 +341,7 @@ Projector.prototype.handleEqualizerClick = function(e) {
 		// iOS doesn't properly support media elements, just flip to the movie
 		this.playRealMovie();
 	} else {
-		this.playAudio();		
+		this.playAudio(true);		
 	}
 };
 
@@ -422,22 +351,7 @@ Projector.prototype.handleEqualizerClick = function(e) {
 Projector.prototype.playRealMovie = function () {
 	var that = this;
 
-	if(Projector.isMobileSafari()) {
-		window.open(this.settings.movieUrl);
-	} else {
-		// Hide looping images
-		this.elements.image1.style.display = 'none';
-		this.elements.image2.style.display = 'none';
-
-		// Enable mute button
-		this.elements.mute.style.display = 'block';
-
-		// Play real movie
-		this.elements.movie.style.zIndex = 1;
-		this.elements.movie.play();
-
-		this.state.movie = true;	
-	}
+	window.open(this.settings.movieUrl);
 };
 
 /**
@@ -448,7 +362,6 @@ Projector.prototype.playAudio = function () {
 
 	// Play sound
 	this.elements.audio.play();
-
 
 	if(this.elements.audio.readyState == 4) {
 		// Force synch audio
@@ -498,7 +411,13 @@ Projector.prototype.loadImage = function (index, callback) {
 
 		// Request image
 		var image = new Image();
+
+		// Store image
+		image.width = this.settings.width;
+		image.height = this.settings.height;
 		image.src = src;
+		
+		item.image = image;
 
 		image.onload = function () {
 			// Perform load time calculations
@@ -508,7 +427,7 @@ Projector.prototype.loadImage = function (index, callback) {
 
 			// Move on
 			item.status = 'ready';
-			item.image = image;
+			
 
 			if (callback) callback();
 		}
@@ -527,31 +446,27 @@ Projector.prototype.drawImage = function (image, frame) {
 	var row = Math.floor(localFrame / this.settings.columns);
 	var column = localFrame % this.settings.columns;
 
-	var ctx = this.elements.canvas.getContext('2d');
 	var index = this.getIndex(frame);
-	var image = this.getImage(index);
+	var image = this.getImage(index).image;
+
+	var width = this.settings.width;
+	var height = this.settings.height;
+
+	var ctx = this.elements.canvas.getContext('2d');
+
+	// console.log(column * width, row * height, width, height);
 
 	ctx.drawImage(
-		image.image, 					// Image
-		(column * this.settings.width), // sx 		The x coordinate where to start clipping
-		(row * this.settings.height), 	// sy 		The y coordinate where to start clipping
-		this.settings.width, 			// swidth 	The width of the clipped image
-		this.settings.height,			// sheight	The height of the clipped image
-		0,								// x		The x coordinate where to place the image on the canvas
-		0,								// y 		The y coordinate where to place the image on the canva
-		this.settings.width,			// width
-		this.settings.height			// height
+		image, 				// Image
+		column * width, 	// sx
+		row * height, 		// sy
+		width,				// sw
+		height,				// sh
+		0,					// dx
+		0,					// dy
+		width,				// dw
+		height				// dh
 	);
-};
-
-/**
- * Get the element currently rendering the image
- * @param  {Boolean} isActive Flag to request the inactive element
- * @return {object}           The active or inactive element
- */
-Projector.prototype.getScreen = function (isActive) {
-	// return this.elements.image;
-	return this.elements.canvas;
 };
 
 /**
@@ -614,7 +529,6 @@ Projector.prototype.tick = function (frame) {
 
 	// Loop
 	if (this.settings.loop && frame > this.settings.totalFrames) {
-		console.log('loop');
 		return this.startMovie();
 	}
 
@@ -860,3 +774,15 @@ Projector.isMobileSafari = function() {
 	var iOS = /(iPhone|iPod|iPad)/g.test( navigator.userAgent );
 	return iOS;
 };
+
+/** 
+ * Get parameter by name
+ * @param  {string} name Parameter name
+ * @return {value}      Parameter value
+ */
+Projector.getParam = function(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
