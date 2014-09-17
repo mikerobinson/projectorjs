@@ -128,6 +128,10 @@ body, html {
     height: 38px;
 }
 
+.social[href=''] {
+    display: none;
+}
+
 .social.youtube {
     background-image: url(images/youtube.png);
 }

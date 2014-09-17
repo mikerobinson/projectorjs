@@ -137,11 +137,15 @@ Projector.prototype.make = function () {
 	this.elements.el.innerHTML = html;
 
 	// Convience lookups
-	var elements = ['canvas', 'container', 'equalizer', 'loading', 'link', 'mute', 'movie', 'rewind', 'pause', 'play'];
+	var elements = ['canvas', 'container', 'controls', 'equalizer', 'fullscreen', 'loading', 'link', 'mute', 'movie', 'rewind', 'pause', 'play'];
 	for(var i = 0; i < elements.length; i++) {
 		var element = elements[i];
 		this.elements[element] = this.elements.el.querySelector('.' + element);
 	}
+
+	// Show / Hide optional controls
+	if(!this.settings.controls) this.elements.controls.style.display = 'none';
+	if(!this.settings.movieUrl) this.elements.fullscreen.style.display = 'none';
 
 	// Create the audio element
 	this.elements.audio = new Audio();
@@ -163,6 +167,7 @@ Projector.prototype.bindEvents = function () {
 
 	// Pause
 	if (this.elements.pause) this.elements.pause.onclick = function () {
+		debugger;
 		that.state.playing ? that.pause.call(that, true) : that.play.call(that, true);
 	}
 
@@ -238,7 +243,7 @@ Projector.prototype.pause = function (lock) {
 	Projector.removeClass(this.elements.container, 'playing');
 
 	// Stop loop
-	clearTimeout(this.state.tickTimeout);
+	this.state.tickTimeout = clearTimeout(this.state.tickTimeout);
 
 	// Pause audio
 	if (this.state.audio) this.elements.audio.pause();
