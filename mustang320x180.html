@@ -8,6 +8,7 @@
         <link rel="author" href="humans.txt">
 
         <link rel="stylesheet" href="projector.css">
+        <link rel="stylesheet" href="fb-ad.css">
     </head>
     <body>
     	<div class="ad"></div>
@@ -20,9 +21,11 @@
                 columns: 8,
                 rows: 6,
                 frameRate: 24,
-                totalFrames: 1513,
+                totalFrames: 1512,
                 width: 320,
                 height: 180,
+                dynamicQuality: true,
+                quality: 0,
                 imageFiles: 'frames/mustang320x180/final/%q-%i.jpg',
                 movieUrl:   'frames/mustang320x180/video/mustang320x180.mp4',
                 audioUrl:   'frames/mustang320x180/audio/96-44.mp3',
@@ -40,10 +43,9 @@
                     mark: 50,
                     name: '50'
                 }],
-                social: {
-                    facebook: 'https://www.facebook.com/fordmustang',
-                    youtube: 'https://www.youtube.com/user/FordMustang'
-                }
+                
+                facebookUrl: 'https://www.facebook.com/fordmustang',
+                youtubeUrl: 'https://www.youtube.com/user/FordMustang'
             });
 
             projector.init();

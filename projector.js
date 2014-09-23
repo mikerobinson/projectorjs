@@ -167,7 +167,6 @@ Projector.prototype.bindEvents = function () {
 
 	// Pause
 	if (this.elements.pause) this.elements.pause.onclick = function () {
-		debugger;
 		that.state.playing ? that.pause.call(that, true) : that.play.call(that, true);
 	}
 
@@ -223,6 +222,7 @@ Projector.prototype.play = function (unlock) {
 			Projector.removeClass(this.elements.container, 'paused');
 
 			// Resume 
+			clearTimeout(this.state.tickTimeout);
 			this.tick(this.state.frame);
 
 			// Play audio
@@ -529,8 +529,6 @@ Projector.prototype.getLoadTimePercentage = function () {
 Projector.prototype.tick = function (frame) {
 	frame = frame || 0;
 	var that = this;
-
-	// console.log('tick', frame);
 
 	// Loop
 	if (this.settings.loop && frame > this.settings.totalFrames) {
