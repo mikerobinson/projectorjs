@@ -7,11 +7,16 @@
 (function() {
 	var pauseTolerance = 0.5;
 	var didScroll = false;
+	var didResize = false;
 	var ads = document.querySelectorAll('.ad-tapad');
 
 	window.addEventListener('scroll', function(e) {
 		didScroll = true;
 	});
+
+	window.addEventListener('resize', function(e) {
+		didResize = true;
+	})
 
 	setInterval(function() {
 		if (didScroll) {

@@ -26,6 +26,8 @@ function Projector(el, options) {
 		playing: true,
 		tickTimeout: null,
 		frame: 0,
+		width: 0,
+		height: 0,
 		loadTimes: []
 	}
 
@@ -36,8 +38,6 @@ function Projector(el, options) {
 		rows: 10,
 		loop: true,
 		controls: true,
-		width: 100,
-		height: 100,
 		eventPixel: '',
 		events: [],
 		lookAhead: 3,
@@ -65,8 +65,12 @@ function Projector(el, options) {
  * Start the video
  */
 Projector.prototype.init = function () {
+	this.state.width = this.elements.el.offsetWidth;
+	this.state.height = this.elements.el.offsetHeight;
+
 	this.checkIframeSettings();
 	this.make();
+	this.resize();
 	this.bindEvents();
 	if (this.settings.autoplay) this.startMovie();
 };
@@ -103,7 +107,7 @@ Projector.prototype.make = function () {
 
 	// Init stage styles
 	var html = [
-		'<div class="container" style="width: {width}px; height: {height}px;">',
+		'<div class="container" style="width: 100%; height: 100%;">',
 			'<canvas class="canvas" width="{width}" height="{height}" style="width: {width}px; height: {height}px;"></canvas>',
 			'<a href="{clickThroughUrl}" target="_blank" class="link"></a>',
 			'<div class="loading"></div>',
@@ -127,12 +131,15 @@ Projector.prototype.make = function () {
 	html = html.join('');
 
 	// Iterate through template and replace the markers with settings values
-	var markers = ['width', 'height', 'clickThroughUrl', 'movieUrl', 'youtubeUrl', 'facebookUrl'];
+	var markers = ['clickThroughUrl', 'movieUrl', 'youtubeUrl', 'facebookUrl'];
 	for(var i = 0; i < markers.length; i++) {
 		var re = new RegExp('{' + markers[i] + '}', 'g');
 		html = html.replace(re, this.settings[markers[i]]);
 	}
-		
+
+	html = html.replace(/{width}/g, this.state.width);
+	html = html.replace(/{height}/g, this.state.height);
+
 	// Append markup
 	this.elements.el.innerHTML = html;
 
@@ -142,6 +149,9 @@ Projector.prototype.make = function () {
 		var element = elements[i];
 		this.elements[element] = this.elements.el.querySelector('.' + element);
 	}
+
+	// Context lookup
+	this.state.ctx = this.elements.canvas.getContext('2d');
 
 	// Show / Hide optional controls
 	if(!this.settings.controls) this.elements.controls.style.display = 'none';
@@ -310,6 +320,9 @@ Projector.prototype.handleMessage = function (event) {
 		case "play":
 			this.play();
 			break;
+		case "resize": 
+			this.resize();
+			break;
 	}
 };
 
@@ -321,18 +334,6 @@ Projector.prototype.handleClick = function (e) {
 		var image = new Image();
 		image.src = this.settings.clickUrl;
 	}
-
-	// Since the ad spawns a new tab, pause the playing movie
-	// if(Projector.isMobileSafari()) {
-	// 	// iOS doesn't properly support media elements, just flip to the movie
-	// 	e.preventDefault();
-	// 	this.playRealMovie();
-	// } else {
-	// 	if(!this.state.audio) {
-	// 		e.preventDefault();
-	// 		this.playAudio(true);
-	// 	}
-	// }
 };
 
 /**
@@ -347,6 +348,26 @@ Projector.prototype.handleEqualizerClick = function(e) {
 		this.playRealMovie();
 	} else {
 		this.playAudio(true);		
+	}
+};
+
+/**
+ * Check the container and resize
+ * @return {[type]} [description]
+ */
+Projector.prototype.resize = function() {
+	this.state.width = this.elements.el.offsetWidth;
+	this.state.height = this.elements.el.offsetHeight;
+
+	if(this.elements.canvas) {
+		this.elements.canvas.width = this.state.width;
+		this.elements.canvas.height = this.state.height;
+
+		this.elements.canvas.style.width = this.state.width + 'px';
+		this.elements.canvas.style.height = this.state.height + 'px';
+
+		// Clear previous canvas
+		this.state.ctx.clearRect(0, 0, this.state.width, this.state.height);
 	}
 };
 
@@ -416,12 +437,9 @@ Projector.prototype.loadImage = function (index, callback) {
 
 		// Request image
 		var image = new Image();
+		image.src = src;
 
 		// Store image
-		image.width = this.settings.width;
-		image.height = this.settings.height;
-		image.src = src;
-		
 		item.image = image;
 
 		image.onload = function () {
@@ -432,7 +450,6 @@ Projector.prototype.loadImage = function (index, callback) {
 
 			// Move on
 			item.status = 'ready';
-			
 
 			if (callback) callback();
 		}
@@ -454,21 +471,25 @@ Projector.prototype.drawImage = function (image, frame) {
 	var index = this.getIndex(frame);
 	var image = this.getImage(index).image;
 
-	var width = this.settings.width;
-	var height = this.settings.height;
+	var iWidth = image.width / this.settings.columns;
+	var iHeight = image.height / this.settings.rows;
+	var heightRatio = iHeight / iWidth;
 
-	var ctx = this.elements.canvas.getContext('2d');
+	// Calculate image ratio
+	var width = this.state.width;
+	var height = this.state.width * heightRatio;
 
-	// console.log(column * width, row * height, width, height);
+	// Calculate center aligned image
+	var dy = (this.state.height - height) / 2;
 
-	ctx.drawImage(
+	this.state.ctx.drawImage(
 		image, 				// Image
-		column * width, 	// sx
-		row * height, 		// sy
-		width,				// sw
-		height,				// sh
+		column * iWidth, 	// sx
+		row * iHeight, 		// sy
+		iWidth,				// sw
+		iHeight,			// sh
 		0,					// dx
-		0,					// dy
+		dy,					// dy
 		width,				// dw
 		height				// dh
 	);
@@ -507,14 +528,6 @@ Projector.prototype.getCompletionPercentage = function (frame) {
  */
 Projector.prototype.getLoadTimePercentage = function () {
 	if (!this.state.loadTimes.length) return NaN;
-
-	// var times = this.state.loadTimes.slice(-3); // Get last 3 or less times
-	// var totalTime = 0;
-
-	// for(var i = 0; i < times.length; i++) {
-	// 	totalTime += times[i];
-	// }
-
 
 	var totalTime = this.state.loadTimes.slice(-1)[0]; // Simplify, just grab the last load time;
 	var percent = (totalTime / this.state.timePerSlide) * 100;
