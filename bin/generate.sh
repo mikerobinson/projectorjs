@@ -6,6 +6,9 @@ if [ $# -lt 5 ]
 then 
 	echo "Usage: bin/generate.sh mustang.mp4 24 mustang 640x360 8x6"
 else
+
+	# Get FPS: ffmpeg -i mustang.mp4 2>&1 | sed -n "s/.*, \(.*\) fp.*/\1/p"
+
 	echo "Preparing target directory..."
 	echo frames/$3$4
 	mkdir -p frames/$3$4/{frames,final,audio,video}
