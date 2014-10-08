@@ -53,7 +53,7 @@ gulp.task('prompt', function (cb) {
 			, {
 				type: 'input'
 				, name: 'rows'
-				, message: 'Number of rows (default: 6)'
+				, message: 'Number of rows (default: 8)'
 			}
 		], function (response) {
 			if(!response.source) (cb (new Error('Source video is required')));
@@ -62,7 +62,7 @@ gulp.task('prompt', function (cb) {
 			response.width = response.width || 320;
 			response.height = response.height || 180;
 			response.columns = response.columns || 8;
-			response.rows = response.rows || 6;
+			response.rows = response.rows || 8;
 
 			settings = response; // Store for other tasks
 			settings.size = response.width + 'x' + response.height;
