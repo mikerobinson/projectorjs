@@ -89,7 +89,8 @@ gulp.task('convert', ['prompt'], function () {
 			, 'ffmpeg -i ' + settings.source + ' -s ' + settings.size + ' ' + settings.directory + '/video/compressed.mp4  -loglevel panic'
 
 			, 'echo "Converting movie to images..."'
-			, 'ffmpeg -i ' + settings.source + ' -r ' + framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel panic'
+			// , 'ffmpeg -i ' + settings.source + ' -r ' + framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel panic'
+			, 'ffmpeg -i ' + settings.directory + '/video/compressed.mp4' + ' -r ' + framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel panic'
 
 			, 'echo "Converting movie to audio..."'
 			, 'ffmpeg -i ' + settings.source + ' -ab 96k -ac 2 -ar 44100 -vn ' + settings.directory + '/audio/96-44.mp3 -loglevel panic'
@@ -129,7 +130,7 @@ gulp.task('uglify', ['convert'], function () {
 })
 
 gulp.task('minify', ['convert'], function () {
-	gulp.src('css/*.css')
+	gulp.src('styles/*.css')
 		.pipe(minify())
 		.pipe(gulp.dest(settings.directory))
 })
