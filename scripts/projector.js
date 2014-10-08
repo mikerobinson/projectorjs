@@ -428,7 +428,7 @@ Projector.prototype.loadImage = function (index, callback) {
 		src = src.replace('%i', index);
 
 		// TESTING, REMOVE IN PROD
-		src = src + '?ord=' + Math.random().toString().substr(2); // Cachebuster, for debugging
+		// src = src + '?ord=' + Math.random().toString().substr(2); // Cachebuster, for debugging
 
 		item.src = src;
 

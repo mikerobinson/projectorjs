@@ -7,10 +7,10 @@ var minify = require('gulp-minify-css');
 var del = require('del');
 var ffmpeg = require('fluent-ffmpeg');
 var q = require('q');
+var fs = require('fs');
 
 var settings = {};
-var framerate;
-var metadata;
+var framerate = 24;
 
 function getMetadata(target) {
 	var deferred = q.defer();
@@ -21,7 +21,6 @@ function getMetadata(target) {
 
 	return deferred.promise;
 }
-
 
 gulp.task('prompt', function (cb) {
 	gulp.src('')
@@ -69,13 +68,15 @@ gulp.task('prompt', function (cb) {
 			settings.size = response.width + 'x' + response.height;
 			settings.tile = response.columns + 'x' + response.rows;
 
-			getMetadata(settings.source).then(function (response) {
-				metadata = response;
-				framerate = metadata.nb_frames / metadata.duration;
+			framerate = 24;
+			cb();
 
-				cb();
-			});
-
+			// getMetadata(settings.source).then(function (response) {
+			// 	metadata = response;
+			// 	// console.log(response);
+			// 	framerate = metadata.nb_frames / metadata.duration;
+			// 	cb();
+			// });
 		}));
 });
 
@@ -86,7 +87,7 @@ gulp.task('convert', ['prompt'], function () {
 			, 'mkdir -p ' + settings.directory + '/{frames,final,audio,video}'
 
 			, 'echo "Converting movie to iPhone friendly MP4..."'
-			, 'ffmpeg -i ' + settings.source + ' -s ' + settings.size + ' ' + settings.directory + '/video/compressed.mp4  -loglevel panic'
+			, 'ffmpeg -i ' + settings.source + ' -s ' + settings.size + ' -r ' + framerate + ' ' + settings.directory + '/video/compressed.mp4  -loglevel panic'
 
 			, 'echo "Converting movie to images..."'
 			// , 'ffmpeg -i ' + settings.source + ' -r ' + framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel panic'
@@ -97,7 +98,7 @@ gulp.task('convert', ['prompt'], function () {
 			, 'ffmpeg -i ' + settings.source + ' -ab 48k -ac 2 -ar 44100 -vn ' + settings.directory + '/audio/48-44.mp3 -loglevel panic'
 
 			, 'echo "Creating montages..."'
-			, 'montage ' + settings.directory + '/frames/frame-*.jpg -geometry $4+0+0 -tile ' + settings.tile + ' ' + settings.directory + '/final/source-%04d.jpg'
+			, 'montage ' + settings.directory + '/frames/frame-*.jpg -tile ' + settings.tile + ' -geometry ' + settings.size + '+0+0 ' + settings.directory + '/final/source-%04d.jpg'
 
 			, 'echo "Compressing montages..."'
 
@@ -136,12 +137,16 @@ gulp.task('minify', ['convert'], function () {
 })
 
 gulp.task('copy', ['convert'], function () {
+	// Determine number of frames in video
+	var frames = fs.readdirSync(settings.directory + '/frames');
+
+
 	gulp.src('index.ejs')
 		.pipe(ejs({
 			columns: settings.columns,
 			rows: settings.rows,
 			framerate: framerate,
-			frames: metadata.nb_frames
+			frames: frames.length
 		}))
 		.pipe(gulp.dest(settings.directory))
 
@@ -149,4 +154,11 @@ gulp.task('copy', ['convert'], function () {
 		.pipe(gulp.dest(settings.directory + '/images'))
 });
 
-gulp.task('default', ['prompt', 'convert', 'cleanup', 'copy', 'uglify', 'minify']);
+gulp.task('copy:source', ['convert'], function () {
+	gulp.src(['styles/*.css', 'scripts/*.js'])
+		.pipe(gulp.dest(settings.directory));
+});
+
+gulp.task('default', ['prompt', 'convert', 'copy', 'uglify', 'minify', 'cleanup']);
+
+gulp.task('debug', ['prompt', 'convert', 'copy', 'copy:source']);
