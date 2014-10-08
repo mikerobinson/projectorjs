@@ -1,0 +1,48 @@
+.fb-ad {
+	background: white;
+	border: 1px solid rgba(0,0,0,0.2);
+	border-radius: 4px;
+	box-sizing: border-box;
+
+	font-family: Helvetica, Arial, 'sans-serif';
+	width: 300px;
+	height: 250px;
+	padding: 10px;
+}
+
+.fb-ad .ad {
+	margin: 5px -10px;
+	box-shadow: 0 0 6px #444;
+}
+
+.fb-ad h1, 
+.fb-ad h2, 
+.fb-ad h3, 
+.fb-ad h4, 
+.fb-ad h5, 
+.fb-ad h6 {
+	padding: 0;
+	margin: 0;
+} 
+
+.fb-ad h1 {
+	font-size: 16px;
+	font-weight: bold;
+}
+
+.fb-ad h1 a {
+	color: black;
+	text-decoration: none;
+}
+
+.fb-ad h2 {
+	font-weight: normal;
+	font-size: 12px;
+	color: #999;
+}
+
+.fb-ad p {
+	font-size: 12px;
+	margin: 5px 0;
+	padding: 0;
+}
