@@ -92,7 +92,7 @@ Projector.prototype.init = function() {
 		that.state.didResize = true;
 	});
 
-	this.initIntervalChecks();
+	// this.initIntervalChecks();
 };
 
 /**
@@ -568,11 +568,17 @@ Projector.prototype.getContainer = function() {
 
 	// Check to see if the projector has been rendered in an iframe or directly on the page
 	if (window.self != window.top) {
-		// Loaded in iFrame
-		var href = window.location.href;
-		var iframes = window.top.document.querySelectorAll('iframe');
-		for (var i = 0; i < iframes.length; i++) {
-			if (iframes[i].src == href) container = iframes[i];
+		// Loaded in iFrame, attempt to access.
+		// Wrapped in try / catch to account for future changes in security policies
+		try {
+			var href = window.location.href;
+			var iframes = window.top.document.querySelectorAll('iframe');
+			for (var i = 0; i < iframes.length; i++) {
+				if (iframes[i].src == href) container = iframes[i];
+			}	
+		} 
+		catch (err) {
+			container = this.elements.el;
 		}
 	} else {
 		// Loaded directly on page
