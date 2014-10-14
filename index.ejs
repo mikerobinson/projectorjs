@@ -1,14 +1,40 @@
 <!doctype html>
-<html style="width: 100%; height: 100%">
+<html>
     <head>
         <meta charset="utf-8">
         <meta name="description" content="">
         <meta name="viewport" content="initial-scale=1">
         <title>Ad</title>
         <link rel="stylesheet" href="projector.css">
+
+        <style>
+            body {
+                position: absolute; 
+                top: 0; 
+                bottom: 0; 
+                left: 0; 
+                right: 0;
+            }
+        
+            html {
+                width: 100%; 
+                height: 100%;
+            }
+
+            body, html {
+                padding: 0;
+                margin: 0;
+                overflow: hidden;
+            }
+
+            .ad {
+                width: 100%; 
+                height: 100%;
+            }
+        </style>
     </head>
-    <body style="position: absolute; top: 0; bottom: 0; left: 0; right: 0;">
-    	<div class="ad" style="width: 100%; height: 100%"></div>
+    <body>
+    	<div class="ad"></div>
 
         <script src="projector.js"></script>
         <script>
@@ -25,7 +51,7 @@
                 movieUrl:   'video/compressed.mp4',
                 audioUrl:   'audio/96-44.mp3',
                 clickThroughUrl:   '',
-                eventSrc:   'http://www.tapad.com/pixel.gif?mark=:mark',
+                eventSrc:   '',
                 events: [
                 {
                     mark: 1,
@@ -44,18 +70,6 @@
             });
 
             projector.init();
-
-            var didResize = false;
-            window.addEventListener('resize', function(e) {
-                didResize = true;
-            });
-
-            setInterval(function() {
-                if (didResize) {
-                    didResize = false;
-                    projector.resize();
-                }
-            }, 250);
         </script>
 
 

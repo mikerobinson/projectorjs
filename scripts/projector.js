@@ -1,5 +1,5 @@
 /**
- * Created by Mike Robinson 
+ * Created by Mike Robinson
  * https://github.com/mikerobinson
  * mike.robinson at gmail
  */
@@ -25,6 +25,8 @@ function Projector(el, options) {
 		started: false,
 		playing: true,
 		tickTimeout: null,
+		didScroll: false,
+		didResize: false,
 		frame: 0,
 		width: 0,
 		height: 0,
@@ -41,6 +43,7 @@ function Projector(el, options) {
 		eventPixel: '',
 		events: [],
 		lookAhead: 3,
+		pauseTolerance: 0.5,
 		movieUrl: '',
 		clickUrl: '',
 		clickThroughUrl: '',
@@ -64,15 +67,32 @@ function Projector(el, options) {
 /**
  * Start the video
  */
-Projector.prototype.init = function () {
+Projector.prototype.init = function() {
+	var that = this;
+
 	this.state.width = this.elements.el.offsetWidth;
 	this.state.height = this.elements.el.offsetHeight;
+	this.state.container = this.getContainer();
 
 	this.checkIframeSettings();
 	this.make();
-	this.resize();
+	this.handleResize();
 	this.bindEvents();
 	if (this.settings.autoplay) this.startMovie();
+
+	window.top.addEventListener('scroll', function(e) {
+		that.state.didScroll = true;
+	});
+
+	window.top.addEventListener('resize', function(e) {
+		that.state.didResize = true;
+	});
+
+	window.addEventListener('resize', function(e) {
+		that.state.didResize = true;
+	});
+
+	this.initIntervalChecks();
 };
 
 /**
@@ -82,14 +102,14 @@ Projector.prototype.checkIframeSettings = function() {
 	var clickUrl = Projector.getParam('clickUrl');
 	var clickThroughUrl = Projector.getParam('clickThroughUrl');
 
-	if(clickUrl) this.settings.clickUrl = clickUrl; 
-	if(clickThroughUrl) this.settings.clickThroughUrl = clickThroughUrl;
+	if (clickUrl) this.settings.clickUrl = clickUrl;
+	if (clickThroughUrl) this.settings.clickThroughUrl = clickThroughUrl;
 };
 
 /**
  * Prepare the DOM elements
  */
-Projector.prototype.make = function () {
+Projector.prototype.make = function() {
 	// Calculate durations
 	this.state.framesPerSlide = this.settings.columns * this.settings.rows;
 	this.state.timePerSlide = ((this.settings.columns * this.settings.rows) / this.settings.frameRate) * 1000; // milliseconds
@@ -108,23 +128,23 @@ Projector.prototype.make = function () {
 	// Init stage styles
 	var html = [
 		'<div class="container" style="width: 100%; height: 100%;">',
-			'<canvas class="canvas" width="{width}" height="{height}" style="width: {width}px; height: {height}px;"></canvas>',
-			'<a href="{clickThroughUrl}" target="_blank" class="link"></a>',
-			'<div class="loading"></div>',
-			'<div class="controls">',
-				'<a class="rewind"></a>',
-				'<a class="pause"></a>',
-				'<a class="play"></a>',
-				'<a class="mute mute-off"></a>',
-				'<div class="equalizer">',
-					'<div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>',
-				'</div>',
-				'<a href="{movieUrl}" class="fullscreen" target="_blank"></a>',
-			'</div>',
-			'<div class="socials">',
-				'<a href="{youtubeUrl}" class="social youtube" target="_blank"></a>',
-				'<a href="{facebookUrl}" class="social facebook" target="_blank"></a>',
-			'</div>',
+		'<canvas class="canvas" width="{width}" height="{height}" style="width: {width}px; height: {height}px;"></canvas>',
+		'<a href="{clickThroughUrl}" target="_blank" class="link"></a>',
+		'<div class="loading"></div>',
+		'<div class="controls">',
+		'<a class="rewind"></a>',
+		'<a class="pause"></a>',
+		'<a class="play"></a>',
+		'<a class="mute mute-off"></a>',
+		'<div class="equalizer">',
+		'<div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>',
+		'</div>',
+		'<a href="{movieUrl}" class="fullscreen" target="_blank"></a>',
+		'</div>',
+		'<div class="socials">',
+		'<a href="{youtubeUrl}" class="social youtube" target="_blank"></a>',
+		'<a href="{facebookUrl}" class="social facebook" target="_blank"></a>',
+		'</div>',
 		'</div>'
 	]
 
@@ -132,7 +152,7 @@ Projector.prototype.make = function () {
 
 	// Iterate through template and replace the markers with settings values
 	var markers = ['clickThroughUrl', 'movieUrl', 'youtubeUrl', 'facebookUrl'];
-	for(var i = 0; i < markers.length; i++) {
+	for (var i = 0; i < markers.length; i++) {
 		var re = new RegExp('{' + markers[i] + '}', 'g');
 		html = html.replace(re, this.settings[markers[i]]);
 	}
@@ -145,7 +165,7 @@ Projector.prototype.make = function () {
 
 	// Convience lookups
 	var elements = ['canvas', 'container', 'controls', 'equalizer', 'fullscreen', 'loading', 'link', 'mute', 'movie', 'rewind', 'pause', 'play'];
-	for(var i = 0; i < elements.length; i++) {
+	for (var i = 0; i < elements.length; i++) {
 		var element = elements[i];
 		this.elements[element] = this.elements.el.querySelector('.' + element);
 	}
@@ -154,8 +174,8 @@ Projector.prototype.make = function () {
 	this.state.ctx = this.elements.canvas.getContext('2d');
 
 	// Show / Hide optional controls
-	if(!this.settings.controls) this.elements.controls.style.display = 'none';
-	if(!this.settings.movieUrl) this.elements.fullscreen.style.display = 'none';
+	if (!this.settings.controls) this.elements.controls.style.display = 'none';
+	if (!this.settings.movieUrl) this.elements.fullscreen.style.display = 'none';
 
 	// Create the audio element
 	this.elements.audio = new Audio();
@@ -167,49 +187,49 @@ Projector.prototype.make = function () {
 /**
  * Bind all events
  */
-Projector.prototype.bindEvents = function () {
+Projector.prototype.bindEvents = function() {
 	var that = this;
 
 	// Play
-	if (this.elements.play) this.elements.play.onclick = function () {
+	if (this.elements.play) this.elements.play.onclick = function() {
 		that.play.call(that, true);
 	}
 
 	// Pause
-	if (this.elements.pause) this.elements.pause.onclick = function () {
+	if (this.elements.pause) this.elements.pause.onclick = function() {
 		that.state.playing ? that.pause.call(that, true) : that.play.call(that, true);
 	}
 
 	// Rewind
-	if (this.elements.rewind) this.elements.rewind.onclick = function () {
+	if (this.elements.rewind) this.elements.rewind.onclick = function() {
 		that.rewind.call(that, true);
 	}
 
 	// Mute
-	if (this.elements.mute) this.elements.mute.onclick = function () {
+	if (this.elements.mute) this.elements.mute.onclick = function() {
 		that.mute.call(that);
 	}
 
 	// Click
-	if (this.elements.link) this.elements.link.onclick = function (e) {
+	if (this.elements.link) this.elements.link.onclick = function(e) {
 		that.handleClick.call(that, e);
 	}
 
 	// Equalizer
-	if (this.elements.equalizer) this.elements.equalizer.onclick = function (e) {
+	if (this.elements.equalizer) this.elements.equalizer.onclick = function(e) {
 		that.handleEqualizerClick.call(that, e);
 	}
 
 	// Window messages (for iframe communication)
-	window.addEventListener('message', function (e) {
+	window.addEventListener('message', function(e) {
 		that.handleMessage.call(that, e);
 	}, false);
 
-	window.addEventListener('focus', function (e) {
+	window.addEventListener('focus', function(e) {
 		that.play.call(that);
 	});
 
-	window.addEventListener('blur', function (e) {
+	window.addEventListener('blur', function(e) {
 		that.pause.call(that);
 	});
 };
@@ -217,11 +237,11 @@ Projector.prototype.bindEvents = function () {
 /**
  * Play the movie
  */
-Projector.prototype.play = function (unlock) {
+Projector.prototype.play = function(unlock) {
 	// console.log('unlock', unlock);
 
-	if(!this.state.locked || unlock) {
-		if(typeof unlock != 'undefined') this.state.locked = !unlock;
+	if (!this.state.locked || unlock) {
+		if (typeof unlock != 'undefined') this.state.locked = !unlock;
 
 		if (!this.state.started) {
 			this.startMovie();
@@ -237,18 +257,18 @@ Projector.prototype.play = function (unlock) {
 
 			// Play audio
 			if (this.state.audio) this.elements.audio.play();
-		}	
+		}
 	}
 };
 
 /**
  * Pause the movie
  */
-Projector.prototype.pause = function (lock) {
+Projector.prototype.pause = function(lock) {
 	this.state.playing = false;
 
-	if(lock) this.state.locked = true; // User pause, cannot override unless user hits play
-	
+	if (lock) this.state.locked = true; // User pause, cannot override unless user hits play
+
 	Projector.addClass(this.elements.container, 'paused');
 	Projector.removeClass(this.elements.container, 'playing');
 
@@ -263,9 +283,9 @@ Projector.prototype.pause = function (lock) {
  * Rewind the ad
  * @param  {boolean} play Start the movie
  */
-Projector.prototype.rewind = function (play) {
+Projector.prototype.rewind = function(play) {
 	this.startMovie();
-	if(play) this.play(play);
+	if (play) this.play(play);
 
 	this.state.frame = 0;
 	this.synchAudio(0, true);
@@ -274,7 +294,7 @@ Projector.prototype.rewind = function (play) {
 /**
  * Toggle mute on the real movie
  */
-Projector.prototype.mute = function () {
+Projector.prototype.mute = function() {
 	this.state.muted = !this.state.muted;
 
 	if (this.state.movie || this.state.audio) {
@@ -289,7 +309,7 @@ Projector.prototype.mute = function () {
 /**
  * Reset the movie and clean up any timeouts
  */
-Projector.prototype.startMovie = function () {
+Projector.prototype.startMovie = function() {
 	var that = this;
 
 	this.state.started = true;
@@ -303,7 +323,7 @@ Projector.prototype.startMovie = function () {
 		this.collection[i].status = 'pristine';
 	}
 
-	this.loadImage(0, function () {
+	this.loadImage(0, function() {
 		that.play.call(that);
 		// that.tick.call(that);
 	});
@@ -312,16 +332,16 @@ Projector.prototype.startMovie = function () {
 /**
  * Handle messages posted to the window. Useful when projector is served in an iframe and needs to be controlled via the parent window.
  */
-Projector.prototype.handleMessage = function (event) {
-	switch(event.data) {
+Projector.prototype.handleMessage = function(event) {
+	switch (event.data) {
 		case "pause":
 			this.pause();
 			break;
 		case "play":
 			this.play();
 			break;
-		case "resize": 
-			this.resize();
+		case "resize":
+			this.handleResize();
 			break;
 	}
 };
@@ -329,8 +349,8 @@ Projector.prototype.handleMessage = function (event) {
 /**
  * Handle user interaction with base container, typically for the clickthrough
  */
-Projector.prototype.handleClick = function (e) {
-	if(this.settings.clickUrl) {
+Projector.prototype.handleClick = function(e) {
+	if (this.settings.clickUrl) {
 		var image = new Image();
 		image.src = this.settings.clickUrl;
 	}
@@ -343,38 +363,81 @@ Projector.prototype.handleClick = function (e) {
 Projector.prototype.handleEqualizerClick = function(e) {
 	e.preventDefault();
 
-	if(Projector.isMobileSafari()) {
+	if (Projector.isMobileSafari()) {
 		// iOS doesn't properly support media elements, just flip to the movie
 		this.playRealMovie();
 	} else {
-		this.playAudio(true);		
+		this.playAudio(true);
+	}
+};
+
+/**
+ * Handle pausing and playing the projector when it scolls in and out of view
+ */
+Projector.prototype.initIntervalChecks = function() {
+	var that = this;
+
+
+	// Create the interval to check how often we scroll.
+	// Use an interval so we don't overload the scroll event. 
+	setInterval(function() {
+		that.handleScroll.call(that);
+		that.handleResize.call(that);
+	}, 250);
+};
+
+/**
+ * Only play video when within the scroll tolerance
+ */
+Projector.prototype.handleScroll = function() {
+	if (this.state.didScroll) {
+		this.state.didScroll = false;
+
+		var pauseTolerance = this.settings.pauseTolerance;
+		var container = this.state.container;
+
+		var rect = container.getBoundingClientRect();
+		var top = window.top.innerHeight - (rect.height * pauseTolerance);
+		var bottom = (rect.height * pauseTolerance);
+
+		if (rect.bottom < bottom || rect.top > top) {
+			// Out of bounds
+			this.pause();
+		} else {
+			// In bounds
+			this.play();
+		}
 	}
 };
 
 /**
  * Check the container and resize
- * @return {[type]} [description]
  */
-Projector.prototype.resize = function() {
-	this.state.width = this.elements.el.offsetWidth;
-	this.state.height = this.elements.el.offsetHeight;
+Projector.prototype.handleResize = function() {
+	if (this.state.didResize) {
+		this.state.didResize = false;
+		var container = this.state.container;
 
-	if(this.elements.canvas) {
-		this.elements.canvas.width = this.state.width;
-		this.elements.canvas.height = this.state.height;
+		this.state.width = container.offsetWidth;
+		this.state.height = container.offsetHeight;
 
-		this.elements.canvas.style.width = this.state.width + 'px';
-		this.elements.canvas.style.height = this.state.height + 'px';
+		if (this.elements.canvas) {
+			this.elements.canvas.width = this.state.width;
+			this.elements.canvas.height = this.state.height;
 
-		// Clear previous canvas
-		this.state.ctx.clearRect(0, 0, this.state.width, this.state.height);
+			this.elements.canvas.style.width = this.state.width + 'px';
+			this.elements.canvas.style.height = this.state.height + 'px';
+
+			// Clear previous canvas
+			this.state.ctx.clearRect(0, 0, this.state.width, this.state.height);
+		}
 	}
 };
 
 /**
  * Swaps out the looping images for a traditional movie element
  */
-Projector.prototype.playRealMovie = function () {
+Projector.prototype.playRealMovie = function() {
 	var that = this;
 
 	window.open(this.settings.movieUrl);
@@ -383,15 +446,15 @@ Projector.prototype.playRealMovie = function () {
 /**
  * Enable audio with looping images
  */
-Projector.prototype.playAudio = function () {
+Projector.prototype.playAudio = function() {
 	var that = this;
 
 	// Play sound
 	this.elements.audio.play();
 
-	if(this.elements.audio.readyState == 4) {
+	if (this.elements.audio.readyState == 4) {
 		// Force synch audio
-		this.synchAudio(this.state.frame, true); 
+		this.synchAudio(this.state.frame, true);
 
 		// Enable mute button & hide equalizer
 		this.elements.mute.style.display = 'block';
@@ -399,7 +462,7 @@ Projector.prototype.playAudio = function () {
 
 		this.state.audio = true;
 	} else {
-		this.elements.audio.addEventListener('canplaythrough', function () {
+		this.elements.audio.addEventListener('canplaythrough', function() {
 			that.playAudio.call(that);
 		});
 	}
@@ -410,7 +473,7 @@ Projector.prototype.playAudio = function () {
  * @param  {integer}   index    The image index in the collection
  * @param  {Function} callback Callback when the image has loaded
  */
-Projector.prototype.loadImage = function (index, callback) {
+Projector.prototype.loadImage = function(index, callback) {
 	// console.log('Load image', index);
 
 	var that = this;
@@ -442,7 +505,7 @@ Projector.prototype.loadImage = function (index, callback) {
 		// Store image
 		item.image = image;
 
-		image.onload = function () {
+		image.onload = function() {
 			// Perform load time calculations
 			that.state.loadTimes.push(new Date().valueOf() - loadTime); // Finish measuring image load time
 
@@ -463,7 +526,7 @@ Projector.prototype.loadImage = function (index, callback) {
  * @param  {string} image         The image source
  * @param  {integer} frame         The frame of the image to render
  */
-Projector.prototype.drawImage = function (image, frame) {
+Projector.prototype.drawImage = function(image, frame) {
 	var localFrame = frame % this.state.framesPerSlide; // frame on current image
 	var row = Math.floor(localFrame / this.settings.columns);
 	var column = localFrame % this.settings.columns;
@@ -483,23 +546,47 @@ Projector.prototype.drawImage = function (image, frame) {
 	var dy = (this.state.height - height) / 2;
 
 	this.state.ctx.drawImage(
-		image, 				// Image
-		column * iWidth, 	// sx
-		row * iHeight, 		// sy
-		iWidth,				// sw
-		iHeight,			// sh
-		0,					// dx
-		dy,					// dy
-		width,				// dw
-		height				// dh
+		image, // Image
+		column * iWidth, // sx
+		row * iHeight, // sy
+		iWidth, // sw
+		iHeight, // sh
+		0, // dx
+		dy, // dy
+		width, // dw
+		height // dh
 	);
+};
+
+
+/**
+ * Determines the true container of the ad (iframe / DOM element)
+ * @return {object} DOM element containing the ad
+ */
+Projector.prototype.getContainer = function() {
+	var container;
+
+	// Check to see if the projector has been rendered in an iframe or directly on the page
+	if (window.self != window.top) {
+		// Loaded in iFrame
+		var href = window.location.href;
+		var iframes = window.top.document.querySelectorAll('iframe');
+		for (var i = 0; i < iframes.length; i++) {
+			if (iframes[i].src == href) container = iframes[i];
+		}
+	} else {
+		// Loaded directly on page
+		container = this.elements.el;
+	}
+
+	return container;
 };
 
 /**
  * Calculates the current image index based on frame
  * @param  {integer} frame The frame to calculate index from
  */
-Projector.prototype.getIndex = function (frame) {
+Projector.prototype.getIndex = function(frame) {
 	return Math.floor(frame / this.state.framesPerSlide)
 }
 
@@ -508,7 +595,7 @@ Projector.prototype.getIndex = function (frame) {
  * @param  {integer} index Collection index
  * @return {object}       The image
  */
-Projector.prototype.getImage = function (index) {
+Projector.prototype.getImage = function(index) {
 	if (index >= this.collection.length) return null;
 	return this.collection[index];
 }
@@ -518,7 +605,7 @@ Projector.prototype.getImage = function (index) {
  * @param  {integer} frame The frame to calculate percentage from
  * @return {number}       Percentage of video complete
  */
-Projector.prototype.getCompletionPercentage = function (frame) {
+Projector.prototype.getCompletionPercentage = function(frame) {
 	return (frame / this.settings.totalFrames) * 100;
 };
 
@@ -526,7 +613,7 @@ Projector.prototype.getCompletionPercentage = function (frame) {
  * Calculate average load time percentage based on last three images
  * @return {number} Average load time
  */
-Projector.prototype.getLoadTimePercentage = function () {
+Projector.prototype.getLoadTimePercentage = function() {
 	if (!this.state.loadTimes.length) return NaN;
 
 	var totalTime = this.state.loadTimes.slice(-1)[0]; // Simplify, just grab the last load time;
@@ -539,7 +626,7 @@ Projector.prototype.getLoadTimePercentage = function () {
  * Perform a tick operation. Check the status of things to see what should move where.
  * @param  {integer} frame The frame to move to
  */
-Projector.prototype.tick = function (frame) {
+Projector.prototype.tick = function(frame) {
 	frame = frame || 0;
 	var that = this;
 
@@ -549,12 +636,12 @@ Projector.prototype.tick = function (frame) {
 	}
 
 	// Handle buffering & ready
-	this.state.tickTimeout = setTimeout(function () {
+	this.state.tickTimeout = setTimeout(function() {
 		// Determine movie status
 		var index = that.getIndex.call(that, frame);
 		var image = that.getImage.call(that, index);
 
-		switch(image.status) {
+		switch (image.status) {
 			case 'ready':
 				that.hideLoading.call(that);
 				if (that.state.audio && that.elements.audio.paused) that.elements.audio.play();
@@ -612,7 +699,7 @@ Projector.prototype.renderFrame = function(frame) {
  * Handle pixel tracking events for video completions
  * @param  {integer} frame The frame to calculate pixel events from
  */
-Projector.prototype.doPixelTracking = function (frame) {
+Projector.prototype.doPixelTracking = function(frame) {
 	var completion = this.getCompletionPercentage(frame);
 
 	for (var i = 0; i < this.settings.events.length; i++) {
@@ -630,15 +717,15 @@ Projector.prototype.doPixelTracking = function (frame) {
  * Make sure the next image sets are always preloaded
  * @param  {integer} frame The frame to calculate the current image from
  */
-Projector.prototype.doLookAhead = function (frame) {
+Projector.prototype.doLookAhead = function(frame) {
 	var that = this;
 	var index = this.getIndex(frame) + 1;
 
 	// Prep next set of images
-	for(var i = 0; i < 3; i++) {
+	for (var i = 0; i < 3; i++) {
 		var image = this.getImage(index + i);
-		
-		if(image && image.status == 'pristine') {
+
+		if (image && image.status == 'pristine') {
 			this.loadImage(index + i);
 			break;
 		}
@@ -648,7 +735,7 @@ Projector.prototype.doLookAhead = function (frame) {
 /**
  * Raise or lower the quality based on bandwidth availability
  */
-Projector.prototype.doQualityCheck = function () {
+Projector.prototype.doQualityCheck = function() {
 	var loadPercentage = this.getLoadTimePercentage();
 
 	// console.log('Load time percent', loadPercentage);
@@ -661,7 +748,7 @@ Projector.prototype.doQualityCheck = function () {
 	if (loadPercentage > 150 && this.state.quality > 0) this.state.quality--; // Really bad
 	if (loadPercentage > 200 && this.state.quality > 0) this.state.quality--; // Atrocious
 
-	if(this.state.quality > this.settings.maxQuality) this.state.quality = this.settings.maxQuality;
+	if (this.state.quality > this.settings.maxQuality) this.state.quality = this.settings.maxQuality;
 
 	// console.log('Quality', this.settings.qualities[this.state.quality]);
 };
@@ -672,7 +759,7 @@ Projector.prototype.doQualityCheck = function () {
  * When the audio is ahead, slow it down.
  * @param  {integer} frame [description]
  */
-Projector.prototype.synchAudio = function (frame, force) {
+Projector.prototype.synchAudio = function(frame, force) {
 	// Force synch audio, which causes a stutter if you do it all the time
 	if (force) {
 		this.elements.audio.currentTime = frame / this.settings.frameRate;
@@ -694,15 +781,15 @@ Projector.prototype.synchAudio = function (frame, force) {
 /**
  * Show and animate the loading spinner
  */
-Projector.prototype.showLoading = function () {
+Projector.prototype.showLoading = function() {
 	if (this.state.loadingInterval) return; // Don't allow more than one
-	
+
 	var that = this;
 	var counter = 0;
 
 	this.elements.loading.style.display = 'block';
 
-	this.state.loadingInterval = setInterval(function () {
+	this.state.loadingInterval = setInterval(function() {
 		var frames = 19;
 		var frameWidth = 38;
 		var offset = counter * -frameWidth;
@@ -715,7 +802,7 @@ Projector.prototype.showLoading = function () {
 /**
  * Hide the loading spinner
  */
-Projector.prototype.hideLoading = function () {
+Projector.prototype.hideLoading = function() {
 	if (!this.state.loadingInterval) return;
 
 	clearInterval(this.state.loadingInterval);
@@ -729,7 +816,7 @@ Projector.prototype.hideLoading = function () {
  * @param  {object|array} src   object to extend from (copy properties from)
  * @return {object|array}       dest object
  */
-Projector.extend = function (dest, src) {
+Projector.extend = function(dest, src) {
 	var i, val;
 	for (i in src) {
 		if (!src.hasOwnProperty(i)) {
@@ -755,7 +842,7 @@ Projector.extend = function (dest, src) {
  * @param {object} element   The element to add a class to
  * @param {string} className The class to add
  */
-Projector.addClass = function (element, className) {
+Projector.addClass = function(element, className) {
 	if (element.className.indexOf(className) < 0) element.className = (className + ' ') + element.className;
 }
 
@@ -764,7 +851,7 @@ Projector.addClass = function (element, className) {
  * @param {object} element   The element to remove a class from
  * @param {string} className The class to remove
  */
-Projector.removeClass = function (element, className) {
+Projector.removeClass = function(element, className) {
 	element.className = element.className.replace(className + ' ', '');
 }
 
@@ -774,7 +861,7 @@ Projector.removeClass = function (element, className) {
  * @param  {string} className The class to toggle
  * @param  {boolean} on        Whether to add or remove the class
  */
-Projector.toggleClass = function (element, className, on) {
+Projector.toggleClass = function(element, className, on) {
 	if (on) {
 		Projector.addClass(element, className);
 	} else {
@@ -787,7 +874,7 @@ Projector.toggleClass = function (element, className, on) {
  * @return {Boolean}
  */
 Projector.isMobileSafari = function() {
-	var iOS = /(iPhone|iPod|iPad)/g.test( navigator.userAgent );
+	var iOS = /(iPhone|iPod|iPad)/g.test(navigator.userAgent);
 	return iOS;
 };
 
@@ -797,8 +884,8 @@ Projector.isMobileSafari = function() {
  * @return {value}      Parameter value
  */
 Projector.getParam = function(name) {
-    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
-    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
-        results = regex.exec(location.search);
-    return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+	name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+	var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+		results = regex.exec(location.search);
+	return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
 }
