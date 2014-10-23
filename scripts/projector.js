@@ -80,19 +80,21 @@ Projector.prototype.init = function() {
 	this.bindEvents();
 	if (this.settings.autoplay) this.startMovie();
 
-	window.top.addEventListener('scroll', function(e) {
-		that.state.didScroll = true;
-	});
+	if(window.self == window.top) {
+		window.top.addEventListener('scroll', function(e) {
+			that.state.didScroll = true;
+		});
 
-	window.top.addEventListener('resize', function(e) {
-		that.state.didResize = true;
-	});
+		window.top.addEventListener('resize', function(e) {
+			that.state.didResize = true;
+		});
+	}
 
 	window.addEventListener('resize', function(e) {
 		that.state.didResize = true;
 	});
 
-	// this.initIntervalChecks();
+	this.initIntervalChecks();
 };
 
 /**
