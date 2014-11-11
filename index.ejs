@@ -46,7 +46,7 @@
                 frameRate: <%= framerate %>,
                 totalFrames: <%= frames %>,
                 dynamicQuality: true,
-                quality: 2,
+                quality: 0,
                 imageFiles: 'final/%q-%i.jpg',
                 movieUrl:   'video/compressed.mp4',
                 audioUrl:   'audio/96-44.mp3',
@@ -63,10 +63,7 @@
                 }, {
                     mark: 50,
                     name: '50'
-                }],
-                
-                facebookUrl: '',
-                youtubeUrl: ''
+                }]
             });
 
             projector.init();

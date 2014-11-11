@@ -42,19 +42,16 @@ function Projector(el, options) {
 		controls: true,
 		eventPixel: '',
 		events: [],
-		lookAhead: 3,
+		lookAhead: 1,
 		pauseTolerance: 0.5,
 		movieUrl: '',
 		clickUrl: '',
 		clickThroughUrl: '',
 
-		quality: 3,
+		quality: 0,
 		qualities: ['10x100', '25x100', '50x100', '75x100'],
 		dynamicQuality: true,
-		maxQuality: 4,
-		facebookUrl: '',
-		youtubeUrl: ''
-
+		maxQuality: 3
 	}
 	this.settings = Projector.extend(options, this.settings);
 
@@ -143,17 +140,13 @@ Projector.prototype.make = function() {
 		'</div>',
 		'<a href="{movieUrl}" class="fullscreen" target="_blank"></a>',
 		'</div>',
-		'<div class="socials">',
-		'<a href="{youtubeUrl}" class="social youtube" target="_blank"></a>',
-		'<a href="{facebookUrl}" class="social facebook" target="_blank"></a>',
-		'</div>',
 		'</div>'
 	]
 
 	html = html.join('');
 
 	// Iterate through template and replace the markers with settings values
-	var markers = ['clickThroughUrl', 'movieUrl', 'youtubeUrl', 'facebookUrl'];
+	var markers = ['clickThroughUrl', 'movieUrl'];
 	for (var i = 0; i < markers.length; i++) {
 		var re = new RegExp('{' + markers[i] + '}', 'g');
 		html = html.replace(re, this.settings[markers[i]]);
@@ -322,7 +315,7 @@ Projector.prototype.startMovie = function() {
 	if (this.state.tickTimeout) clearTimeout(this.state.tickTimeout);
 
 	for (var i = 0; i < this.collection.length; i++) {
-		this.collection[i].status = 'pristine';
+		// this.collection[i].status = 'pristine';
 	}
 
 	this.loadImage(0, function() {
@@ -730,7 +723,7 @@ Projector.prototype.doLookAhead = function(frame) {
 	var index = this.getIndex(frame) + 1;
 
 	// Prep next set of images
-	for (var i = 0; i < 3; i++) {
+	for (var i = 0; i < this.settings.lookAhead; i++) {
 		var image = this.getImage(index + i);
 
 		if (image && image.status == 'pristine') {
@@ -749,7 +742,8 @@ Projector.prototype.doQualityCheck = function() {
 	// console.log('Load time percent', loadPercentage);
 
 	// Increase quality
-	if (loadPercentage <= 50 && this.state.quality < this.settings.qualities.length - 1) this.state.quality++;
+	if (loadPercentage <= 25 && this.state.quality < this.settings.qualities.length - 1) this.state.quality += 2;
+	if (loadPercentage > 25 && loadPercentage <= 50 && this.state.quality < this.settings.qualities.length - 1) this.state.quality++;
 
 	// Decrease quality
 	if (loadPercentage > 100 && this.state.quality > 0) this.state.quality--; // Bad
@@ -768,22 +762,25 @@ Projector.prototype.doQualityCheck = function() {
  * @param  {integer} frame [description]
  */
 Projector.prototype.synchAudio = function(frame, force) {
+	var audioFrame = this.elements.audio.currentTime * this.settings.frameRate;
+	var diff = Math.abs(audioFrame - frame);
+
+	if(diff > 2) {
+		if (audioFrame > frame) {
+			this.elements.audio.playbackRate = 0.95;
+		} else if (audioFrame < frame) {
+			this.elements.audio.playbackRate = 1.05;
+		} else {
+			this.elements.audio.playbackRate = 1;
+		}
+	}
+
 	// Force synch audio, which causes a stutter if you do it all the time
-	if (force) {
+	if (force || diff > 10) {
 		this.elements.audio.currentTime = frame / this.settings.frameRate;
 	}
 
-	var audioFrame = this.elements.audio.currentTime * this.settings.frameRate;
-
-	if (audioFrame > frame) {
-		this.elements.audio.playbackRate = 0.97;
-	} else if (audioFrame < frame) {
-		this.elements.audio.playbackRate = 1.03;
-	} else {
-		this.elements.audio.playbackRate = 1;
-	}
-
-	// console.log('audio rate', this.elements.audio.playbackRate);
+	console.log('audio rate', this.elements.audio.playbackRate, diff);
 };
 
 /**

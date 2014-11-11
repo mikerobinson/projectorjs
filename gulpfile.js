@@ -95,7 +95,6 @@ gulp.task('convert', ['prompt'], function () {
 
 			, 'echo "Converting movie to audio..."'
 			, 'ffmpeg -i ' + settings.source + ' -ab 96k -ac 2 -ar 44100 -vn ' + settings.directory + '/audio/96-44.mp3 -loglevel panic'
-			, 'ffmpeg -i ' + settings.source + ' -ab 48k -ac 2 -ar 44100 -vn ' + settings.directory + '/audio/48-44.mp3 -loglevel panic'
 
 			, 'echo "Creating montages..."'
 			, 'montage ' + settings.directory + '/frames/frame-*.jpg -tile ' + settings.tile + ' -geometry ' + settings.size + '+0+0 ' + settings.directory + '/final/source-%04d.jpg'
