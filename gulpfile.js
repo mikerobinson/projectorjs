@@ -10,7 +10,6 @@ var q = require('q');
 var fs = require('fs');
 
 var settings = {};
-var framerate = 24;
 
 function getMetadata(target) {
 	var deferred = q.defer();
@@ -55,6 +54,11 @@ gulp.task('prompt', function (cb) {
 				, name: 'rows'
 				, message: 'Number of rows (default: 8)'
 			}
+			, {
+				type: 'input'
+				, name: 'framerate'
+				, message: 'Framerate (default: 24)'
+			}
 		], function (response) {
 			if(!response.source) (cb (new Error('Source video is required')));
 			if(!response.directory) (cb (new Error('Directory is required')));
@@ -63,12 +67,12 @@ gulp.task('prompt', function (cb) {
 			response.height = response.height || 180;
 			response.columns = response.columns || 8;
 			response.rows = response.rows || 8;
+			response.framerate = response.framerate || 24;
 
 			settings = response; // Store for other tasks
 			settings.size = response.width + 'x' + response.height;
 			settings.tile = response.columns + 'x' + response.rows;
 
-			framerate = 24;
 			cb();
 
 			// getMetadata(settings.source).then(function (response) {
@@ -87,11 +91,11 @@ gulp.task('convert', ['prompt'], function () {
 			, 'mkdir -p ' + settings.directory + '/{frames,final,audio,video}'
 
 			, 'echo "Converting movie to iPhone friendly MP4..."'
-			, 'ffmpeg -i ' + settings.source + ' -s ' + settings.size + ' -r ' + framerate + ' ' + settings.directory + '/video/compressed.mp4  -loglevel panic'
+			, 'ffmpeg -i ' + settings.source + ' -s ' + settings.size + ' -r ' + settings.framerate + ' ' + settings.directory + '/video/compressed.mp4  -loglevel panic'
 
 			, 'echo "Converting movie to images..."'
-			// , 'ffmpeg -i ' + settings.source + ' -r ' + framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel panic'
-			, 'ffmpeg -i ' + settings.directory + '/video/compressed.mp4' + ' -r ' + framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel panic'
+			// , 'ffmpeg -i ' + settings.source + ' -r ' + settings.framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel panic'
+			, 'ffmpeg -i ' + settings.directory + '/video/compressed.mp4' + ' -r ' + settings.framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel panic'
 
 			, 'echo "Converting movie to audio..."'
 			, 'ffmpeg -i ' + settings.source + ' -ab 96k -ac 2 -ar 44100 -vn ' + settings.directory + '/audio/96-44.mp3 -loglevel panic'
@@ -144,7 +148,7 @@ gulp.task('copy', ['convert'], function () {
 		.pipe(ejs({
 			columns: settings.columns,
 			rows: settings.rows,
-			framerate: framerate,
+			framerate: settings.framerate,
 			frames: frames.length
 		}))
 		.pipe(gulp.dest(settings.directory))
