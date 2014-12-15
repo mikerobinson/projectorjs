@@ -6,32 +6,7 @@
         <meta name="viewport" content="initial-scale=1">
         <title>Advertising</title>
         <link rel="stylesheet" href="projector.css">
-
-        <style>
-            body {
-                position: absolute; 
-                top: 0; 
-                bottom: 0; 
-                left: 0; 
-                right: 0;
-            }
-        
-            html {
-                width: 100%; 
-                height: 100%;
-            }
-
-            body, html {
-                padding: 0;
-                margin: 0;
-                overflow: hidden;
-            }
-
-            .ad {
-                width: 100%; 
-                height: 100%;
-            }
-        </style>
+        <link rel="stylesheet" href="projector-iframe.css">
     </head>
     <body>
     	<div class="ad"></div>
@@ -54,15 +29,25 @@
                 eventSrc:   '',
                 events: [
                 {
-                    mark: 1,
-                    name: '1'
+                    mark: '2s',
+                    name: '2s'
                 },
                 {
-                    mark: 25,
-                    name: '25'
+                    mark: '1%',
+                    name: '1%'
+                },
+                {
+                    mark: '25%',
+                    name: '25%'
                 }, {
-                    mark: 50,
-                    name: '50'
+                    mark: '50%',
+                    name: '50%'
+                }, {
+                    mark: '75%',
+                    name: '75%'
+                }, {
+                    mark: '100%',
+                    name: '100%'
                 }]
             });
 

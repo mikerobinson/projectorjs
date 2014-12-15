@@ -45,7 +45,7 @@ function Projector(el, options) {
 		lookAhead: 1,
 		pauseTolerance: 0.5,
 		movieUrl: '',
-		clickUrl: '',
+		clickTrackerUrl: '',
 		clickThroughUrl: '',
 
 		quality: 0,
@@ -72,9 +72,11 @@ Projector.prototype.init = function() {
 	this.state.container = this.getContainer();
 
 	this.checkIframeSettings();
+	this.initPixelTracking();
 	this.make();
 	this.handleResize();
 	this.bindEvents();
+
 	if (this.settings.autoplay) this.startMovie();
 
 	if(window.self == window.top) {
@@ -98,10 +100,17 @@ Projector.prototype.init = function() {
  * Checks for parameters passed in iFrame url and overwrites settings if they exist
  */
 Projector.prototype.checkIframeSettings = function() {
-	var clickUrl = Projector.getParam('clickUrl');
+	var clickTrackerUrl = Projector.getParam('clickTrackerUrl');
 	var clickThroughUrl = Projector.getParam('clickThroughUrl');
 
-	if (clickUrl) this.settings.clickUrl = clickUrl;
+	var fixedQuality = parseInt(Projector.getParam('quality'));
+
+	if(!isNaN(fixedQuality) && fixedQuality >= 0 && fixedQuality < this.settings.qualities.length) {
+		this.settings.dynamicQuality = false;
+		this.settings.quality = fixedQuality;
+	}
+
+	if (clickTrackerUrl) this.settings.clickTrackerUrl = clickTrackerUrl;
 	if (clickThroughUrl) this.settings.clickThroughUrl = clickThroughUrl;
 };
 
@@ -345,9 +354,9 @@ Projector.prototype.handleMessage = function(event) {
  * Handle user interaction with base container, typically for the clickthrough
  */
 Projector.prototype.handleClick = function(e) {
-	if (this.settings.clickUrl) {
+	if (this.settings.clickTrackerUrl) {
 		var image = new Image();
-		image.src = this.settings.clickUrl;
+		image.src = this.settings.clickTrackerUrl;
 	}
 };
 
@@ -701,16 +710,41 @@ Projector.prototype.renderFrame = function(frame) {
  * @param  {integer} frame The frame to calculate pixel events from
  */
 Projector.prototype.doPixelTracking = function(frame) {
-	var completion = this.getCompletionPercentage(frame);
-
 	for (var i = 0; i < this.settings.events.length; i++) {
-		if (completion >= this.settings.events[i].mark && !this.settings.events[i].src) {
-			// Bind pixel src to event so we can check if we've already requested it later
-			this.settings.events[i].src = this.settings.eventSrc.replace(':mark', this.settings.events[i].name);
+		var e = this.settings.events[i];
 
+		if(frame >= e._targetFrame && !e._fired) {
 			var pixelImage = new Image();
-			pixelImage.src = this.settings.events[i].src;
+			pixelImage.src = this.settings.eventSrc.replace(':mark', e.name);
+
+			// Record firing so we don't duplicate events
+			e._fired = true;
+
+			// console.log(e, 'Firing pixel', pixelImage.src);
 		}
+	}
+};
+
+/**
+ * Calculate the frames on which pixels should fire
+ * Supports percentages '25%' and seconds '2.5s'
+ */
+Projector.prototype.initPixelTracking = function() {
+	for(var i = 0; i < this.settings.events.length; i++) {
+		var e = this.settings.events[i];
+		var unit = e.mark.substr(-1);	// determine unit type
+		var mark = parseFloat(e.mark.substr(0, e.mark.length - 1)); // trim and convert unit type from string
+
+		// calculate frame after which this pixel fires
+		switch(unit) {
+			case '%':
+				e._targetFrame = Math.ceil(this.settings.totalFrames * (mark / 100));
+				break;
+			case 's':
+				e._targetFrame = mark * this.settings.frameRate;
+				break;
+		}
+		
 	}
 };
 
