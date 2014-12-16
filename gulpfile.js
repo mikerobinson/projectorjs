@@ -30,7 +30,6 @@ gulp.task('prompt', function (cb) {
 	gulp.src('')
 		.pipe(gulpif(argv.source,
         prompt.prompt([], function (response) {
-          console.log("In non-interactive mode but using prompt");
           // Be strict about specifying all arguments.
           if (!argv.source) throw new Error('Source video is required');
           if (!argv.directory) throw new Error('Directory is required');
