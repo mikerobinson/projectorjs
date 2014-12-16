@@ -28,7 +28,7 @@ gulp.task('prompt', function (cb) {
   // Assume that if a --source flag is passed, we don't want interactive mode.
   // Otherwise, continue on to interactive prompt.
 	gulp.src('')
-		.pipe(gulpif(argv.source,
+		.pipe(gulpif(!!argv.source,
         prompt.prompt([], function (response) {
           // Be strict about specifying all arguments.
           if (!argv.source) throw new Error('Source video is required');
