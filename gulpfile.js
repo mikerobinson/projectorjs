@@ -117,7 +117,7 @@ gulp.task('convert', ['prompt'], function () {
 			, 'mkdir -p ' + settings.directory + '/{frames,final,audio,video}'
 
 			, 'echo "Converting movie to iPhone friendly MP4..."'
-			, 'ffmpeg -i ' + settings.source + ' -s ' + settings.size + ' -r ' + settings.framerate + ' ' + settings.directory + '/video/compressed.mp4  -loglevel panic'
+			, 'ffmpeg -i ' + settings.source + ' -strict experimental -s ' + settings.size + ' -r ' + settings.framerate + ' ' + settings.directory + '/video/compressed.mp4  -loglevel panic'
 
 			, 'echo "Converting movie to images..."'
 			// , 'ffmpeg -i ' + settings.source + ' -r ' + settings.framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel panic'
