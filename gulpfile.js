@@ -117,14 +117,14 @@ gulp.task('convert', ['prompt'], function () {
 			, 'mkdir -p ' + settings.directory + '/{frames,final,audio,video}'
 
 			, 'echo "Converting movie to iPhone friendly MP4..."'
-			, 'ffmpeg -i ' + settings.source + ' -strict experimental -s ' + settings.size + ' -r ' + settings.framerate + ' ' + settings.directory + '/video/compressed.mp4  -loglevel panic'
+			, 'ffmpeg -i ' + settings.source + ' -strict experimental -s ' + settings.size + ' -r ' + settings.framerate + ' ' + settings.directory + '/video/compressed.mp4  -loglevel info'
 
 			, 'echo "Converting movie to images..."'
-			// , 'ffmpeg -i ' + settings.source + ' -r ' + settings.framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel panic'
-			, 'ffmpeg -i ' + settings.directory + '/video/compressed.mp4' + ' -r ' + settings.framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel panic'
+			// , 'ffmpeg -i ' + settings.source + ' -r ' + settings.framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel info'
+			, 'ffmpeg -i ' + settings.directory + '/video/compressed.mp4' + ' -r ' + settings.framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel info'
 
 			, 'echo "Converting movie to audio..."'
-			, 'ffmpeg -i ' + settings.source + ' -ab 96k -ac 2 -ar 44100 -vn ' + settings.directory + '/audio/96-44.mp3 -loglevel panic'
+			, 'ffmpeg -i ' + settings.source + ' -ab 96k -ac 2 -ar 44100 -vn ' + settings.directory + '/audio/96-44.mp3 -loglevel info'
 
 			, 'echo "Creating montages..."'
 			, 'montage ' + settings.directory + '/frames/frame-*.jpg -tile ' + settings.tile + ' -geometry ' + settings.size + '+0+0 ' + settings.directory + '/final/source-%04d.jpg'
