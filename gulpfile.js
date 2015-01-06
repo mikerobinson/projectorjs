@@ -8,6 +8,8 @@ var del = require('del');
 var ffmpeg = require('fluent-ffmpeg');
 var q = require('q');
 var fs = require('fs');
+var argv = require('yargs').argv;
+var gulpif = require('gulp-if');
 
 var settings = {};
 
@@ -21,9 +23,33 @@ function getMetadata(target) {
 	return deferred.promise;
 }
 
+// Get options interactively, or via commandline arguments.
 gulp.task('prompt', function (cb) {
+  // Assume that if a --source flag is passed, we don't want interactive mode.
+  // Otherwise, continue on to interactive prompt.
 	gulp.src('')
-		.pipe(prompt.prompt([
+		.pipe(gulpif(!!argv.source,
+        prompt.prompt([], function (response) {
+          // Be strict about specifying all arguments.
+          if (!argv.source) throw new Error('Source video is required');
+          if (!argv.directory) throw new Error('Directory is required');
+          if (!argv.width) throw new Error('Width is required. Try 320.');
+          if (!argv.height) throw new Error('Height is required. Try 180.');
+          if (!argv.framerate) throw new Error('Framerate is required. Try 24.');
+          if (!argv.columns) throw new Error('Columns is required. Try 8.');
+          if (!argv.rows) throw new Error('Columns is required. Try 8.');
+
+          // Side effect global settings variable.
+          settings = {
+            source: argv.source,
+            directory: argv.directory,
+            framerate: argv.framerate,
+            size: argv.width + 'x' + argv.height,
+            tile: argv.columns + 'x' + argv.rows
+          };
+          cb();
+        }),
+      prompt.prompt([
 			{
 				type: 'input'
 				, name: 'source'
@@ -81,7 +107,7 @@ gulp.task('prompt', function (cb) {
 			// 	framerate = metadata.nb_frames / metadata.duration;
 			// 	cb();
 			// });
-		}));
+		})));
 });
 
 gulp.task('convert', ['prompt'], function () {
@@ -91,14 +117,14 @@ gulp.task('convert', ['prompt'], function () {
 			, 'mkdir -p ' + settings.directory + '/{frames,final,audio,video}'
 
 			, 'echo "Converting movie to iPhone friendly MP4..."'
-			, 'ffmpeg -i ' + settings.source + ' -s ' + settings.size + ' -r ' + settings.framerate + ' ' + settings.directory + '/video/compressed.mp4  -loglevel panic'
+			, 'ffmpeg -i ' + settings.source + ' -strict experimental -s ' + settings.size + ' -r ' + settings.framerate + ' ' + settings.directory + '/video/compressed.mp4  -loglevel info'
 
 			, 'echo "Converting movie to images..."'
-			// , 'ffmpeg -i ' + settings.source + ' -r ' + settings.framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel panic'
-			, 'ffmpeg -i ' + settings.directory + '/video/compressed.mp4' + ' -r ' + settings.framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel panic'
+			// , 'ffmpeg -i ' + settings.source + ' -r ' + settings.framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel info'
+			, 'ffmpeg -i ' + settings.directory + '/video/compressed.mp4' + ' -r ' + settings.framerate + ' -s ' + settings.size + ' -qscale:v 1 -f image2 ' + settings.directory + '/frames/frame-%04d.jpg -loglevel info'
 
 			, 'echo "Converting movie to audio..."'
-			, 'ffmpeg -i ' + settings.source + ' -ab 96k -ac 2 -ar 44100 -vn ' + settings.directory + '/audio/96-44.mp3 -loglevel panic'
+			, 'ffmpeg -i ' + settings.source + ' -ab 96k -ac 2 -ar 44100 -vn ' + settings.directory + '/audio/96-44.mp3 -loglevel info'
 
 			, 'echo "Creating montages..."'
 			, 'montage ' + settings.directory + '/frames/frame-*.jpg -tile ' + settings.tile + ' -geometry ' + settings.size + '+0+0 ' + settings.directory + '/final/source-%04d.jpg'
